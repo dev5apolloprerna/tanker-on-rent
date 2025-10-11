@@ -99,7 +99,15 @@
                       @forelse ($withdrawals as $w)
                       <tr>
                         <td><input type="checkbox" name="ids[]" value="{{ $w->withdrawal_id }}" class="row-check"></td>
-                        <td>{{ $w->employee->name ?? '-' }}</td>
+                        <td>
+                          <button type="button"
+                                  class="btn btn-link p-0 js-emp-detail"
+                                  data-emp="{{ $w->emp_id }}"
+                                  data-name="{{ $w->employee->name ?? 'Employee' }}">
+                            {{ $w->employee->name ?? '-' }}
+                          </button>
+                        </td>
+                        <!-- <td>{{ $w->employee->name ?? '-' }}</td> -->
                         <td>{{ \Carbon\Carbon::parse($w->withdrawal_date)->format('d M Y') }}</td>
                         <td><strong>₹{{ number_format($w->amount, 2) }}</strong></td>
                         <td>{{ $w->reason ?? '-' }}</td>
@@ -115,7 +123,10 @@
                             data-remarks="{{ $w->remarks }}">
                             <i class="fa fa-edit"></i>
                           </button>
+                          
+
                         </td>
+
                       </tr>
                       @empty
                         <tr><td colspan="6" class="text-center text-muted">No records found.</td></tr>
@@ -192,6 +203,23 @@
   </div>
 </div>
 
+<div class="modal fade" id="empDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Employee Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="empDetailBody">
+        <div class="text-center p-5">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-2 small text-muted">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 @section('scripts')
 <script>
 document.getElementById('checkAll').addEventListener('change', e => {
@@ -212,6 +240,37 @@ document.querySelectorAll('.editBtn').forEach(btn => {
     new bootstrap.Modal(document.getElementById('editModal')).show();
   });
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  const modalEl   = document.getElementById('empDetailModal');
+  const modalBody = document.getElementById('empDetailBody');
+  const modal     = new bootstrap.Modal(modalEl);
+
+  document.querySelectorAll('.js-emp-detail').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const empId = btn.dataset.emp;
+      const empName = btn.dataset.name || 'Employee';
+      modalEl.querySelector('.modal-title').textContent = empName + ' — Withdrawal Details';
+
+      modalBody.innerHTML = `
+        <div class="text-center p-5">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-2 small text-muted">Loading…</div>
+        </div>`;
+
+      modal.show();
+
+      try {
+        const url = `{{ route('employee-extra-withdrawal.employee-detail') }}?emp_id=${encodeURIComponent(empId)}`;
+        const res = await fetch(url, { headers: { 'X-Requested-With':'XMLHttpRequest' }});
+        modalBody.innerHTML = await res.text();
+      } catch (e) {
+        modalBody.innerHTML = `<div class="alert alert-danger">Failed to load detail.</div>`;
+      }
+    });
+  });
+});
+
 </script>
 @endsection
 @endsection

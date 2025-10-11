@@ -146,7 +146,7 @@
                                     {{-- Rent Amount --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">Rent Amount <span style="color:red;">*</span></label>
-                                        <input type="number" class="form-control" name="rent_amount" min="0"
+                                        <input type="number" class="form-control" name="rent_amount" id="rent_amount" min="0"
                                                value="{{ old('rent_amount', $order->rent_amount ?? '') }}" placeholder="0">
                                         @if($errors->has('rent_amount'))
                                             <span class="text-danger">{{ $errors->first('rent_amount') }}</span>

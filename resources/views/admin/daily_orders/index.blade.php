@@ -54,7 +54,7 @@
                   @forelse($rows as $r)
                   @php
                       $paid = (float)($r->paid_sum ?? 0);
-                      $due  = max(0, (float)$r->amount - $paid);
+                      $due  = max(0, (float)$r->total_amount - $paid);
                     @endphp
                     <tr>
                       <td>{{ $r->daily_order_id }}</td>
@@ -69,7 +69,7 @@
                       </td>
                       <td>{{ $r->mobile }}</td>
                       <td>{{ $r->service_type }}</td>
-                      <td class="text-end">₹{{ number_format((float)$r->amount, 2) }}</td>
+                      <td class="text-end">₹{{ number_format((float)$r->total_amount, 2) }}</td>
                       <td class="text-end">₹{{ number_format($paid, 2) }}</td>
                       <td class="text-end {{ $due > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
                         ₹{{ number_format($due, 2) }}
@@ -80,6 +80,7 @@
                        <a href="{{ route('daily-orders.edit', $r->daily_order_id) }}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+
                         <form action="{{ route('daily-orders.destroy', $r->daily_order_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this order?');">
                           @csrf @method('DELETE')
                           <button class="btn btn-sm btn-danger"><i class="fas fa-trash-alt"></i></button>
@@ -92,7 +93,7 @@
                             data-order-id="{{ $r->daily_order_id }}"
                             data-customer-id="{{ $r->customer_id }}"
                             data-customer-name="{{ $r->customer_name }}"
-                            data-service="{{ $r->service_type }}"
+                            data-total-amount="{{ $r->total_amount }}"
                             data-order-date="{{ \Carbon\Carbon::parse($r->rent_date)->format('Y-m-d') }}"
                           ><i class="fas fa-inr"></i></button>
                       </td>
@@ -144,7 +145,7 @@
 
           <div class="mb-3">
             <label class="form-label">Amount (₹) <span class="text-danger">*</span></label>
-            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="payAmount" required>
+            <input type="number" step="0.01" min="0.01" class="form-control" name="total_amount" id="payAmount" required>
           </div>
 
           <div class="mb-3">
@@ -171,7 +172,7 @@
 
 @section('scripts')
 <script>
-(function(){
+(function(){ 
   const paymentModal = document.getElementById('paymentModal');
   const paymentForm  = document.getElementById('paymentForm');
   const payCustomerInfo = document.getElementById('payCustomerInfo');
@@ -187,14 +188,14 @@
       const custId    = btn.dataset.customerId || '';
       const service   = btn.dataset.service || '';
       const orderDate = btn.dataset.orderDate || '';
-
+      const total_amount = btn.dataset.totalAmount || '';
       // Set form action to /daily-orders/{id}/payment
       paymentForm.action = "{{ route('daily-orders.payment', ':id') }}".replace(':id', orderId);
 
       // Prefill UI
       payCustomerInfo.textContent = `Customer: ${custName} (ID: ${custId})`;
       payOrderInfo.textContent    = `Order #${orderId} • ${service} • ${orderDate}`;
-      payAmount.value  = '';
+      payAmount.value  = total_amount;
       payComment.value = `Payment received for Order #${orderId}`;
       if(!payDate.value) {
         const today = new Date().toISOString().slice(0,10);

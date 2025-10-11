@@ -12,9 +12,15 @@ class OrderPayment extends Model
     protected $fillable = [
         'customer_id', 'order_id', 'total_amount', 'paid_amount', 'unpaid_amount', 'payment_received_by', 'payment_date' 
     ];
-public function order()
-{
-    return $this->belongsTo(OrderMaster::class, 'order_id', 'order_id');
-}
+    public function order()
+    {
+        return $this->belongsTo(OrderMaster::class, 'order_id', 'order_id');
+    }
+
+    public function PaymentReceivedUser()
+    {
+        return $this->belongsTo(PaymentReceivedUser::class, 'payment_received_by', 'received_id');
+
+    }
 
 }

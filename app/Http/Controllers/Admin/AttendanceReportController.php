@@ -46,4 +46,42 @@ class AttendanceReportController extends Controller
 
         return view('admin.reports.attendance_report', compact('records', 'summary', 'from', 'to', 'grandTotal'));
     }
+     public function employeeDetail(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|integer',
+            'from' => 'nullable|date',
+            'to'   => 'nullable|date',
+        ]);
+
+        $from = $request->input('from') ?: now()->startOfMonth()->toDateString();
+        $to   = $request->input('to')   ?: now()->endOfMonth()->toDateString();
+
+        $employee = EmployeeMaster::findOrFail($request->employee_id);
+
+        $records = EmpAttendance::with('employee')
+            ->where('emp_id', $employee->emp_id)
+            ->whereBetween('attendance_date', [$from, $to])
+            ->orderBy('attendance_date', 'asc')
+            ->get();
+
+        $present = $records->where('status', 'P')->count();
+        $absent  = $records->where('status', 'A')->count();
+        $half    = $records->where('status', 'H')->count();
+
+        $wage    = (float) ($employee->daily_wages ?? 0);
+        $payment = ($present * $wage) + ($half * ($wage / 2));
+
+        return view('admin.reports._employee_detail', [
+            'employee' => $employee,
+            'from'     => $from,
+            'to'       => $to,
+            'records'  => $records,
+            'present'  => $present,
+            'absent'   => $absent,
+            'half'     => $half,
+            'wage'     => $wage,
+            'payment'  => $payment,
+        ]);
+    }
 }

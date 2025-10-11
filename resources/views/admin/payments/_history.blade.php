@@ -38,6 +38,7 @@
         <th>Total (Snapshot)</th>
         <th>Paid</th>
         <th>Unpaid (After Row)</th>
+        <th>Payment Received By</th>
       </tr>
     </thead>
     <tbody>
@@ -50,6 +51,7 @@
           <td class="{{ (int)$p->unpaid_amount>0 ? 'text-danger' : 'text-success' }}">
             ₹{{ number_format((int)$p->unpaid_amount) }}
           </td>
+          <td> {{ $p->PaymentReceivedUser->name ?? '-' }} </td>
         </tr>
       @empty
         <tr><td colspan="5" class="text-center">No payments yet.</td></tr>

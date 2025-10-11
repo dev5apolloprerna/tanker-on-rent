@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 
 use App\Models\DailyOrder;
+use App\Models\DailyOrderLedger;
 use App\Models\Customer;
 use App\Services\LedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB; // top of file
+
+use Illuminate\Validation\Rule;
 
 class DailyOrderController extends Controller
 {
@@ -39,7 +42,7 @@ class DailyOrderController extends Controller
 
             // Page totals (for the rows shown on current page)
             $coll = $rows->getCollection();
-            $page_total_amount = (float) $coll->sum('amount');
+            $page_total_amount = (float) $coll->sum('total_amount');
             $page_total_paid   = (float) $coll->sum('paid_sum');
             $page_total_due    = $page_total_amount - $page_total_paid;
 
@@ -84,11 +87,12 @@ class DailyOrderController extends Controller
                 'mobile'        => $mobile,
                 'location'      => $request->input('location'),
                 'rent_date'     => $request->input('rent_date'),
-                'service_type'  => $request->input('service_type'),
-                'amount'        => (float)$request->input('amount'),
-                'iStatus'       => (int)$request->input('iStatus', 1),
-                'isDelete'      => 0,
-            ]);
+                'placed_the_tanker'  => $request->input('placed_the_tanker'),
+                'empty_the_tanker'  => $request->input('empty_the_tanker'),
+                'filled_the_tanker'  => $request->input('filled_the_tanker'),
+                'total_amount'        => (float)$request->input('total_amount'),
+                'isPaid'       => (int)$request->input('isPaid', 1),
+                            ]);
 
             // Ledger: add a DEBIT for this order
             $this->ledger->addDebitForOrder($order, 'Order debit');
@@ -99,39 +103,35 @@ class DailyOrderController extends Controller
 
     public function update(Request $request, DailyOrder $daily_order)
     {
-        $validated = $this->validatePayload($request);
+        $validated  = $this->validatePayload($request);
 
-        if ($validated['customer_type'] === 'retail') {
-            $customerId   = 0;
-            $customerName = $validated['customer_name'];
-            $mobile       = $validated['mobile'];
-        } else {
-            $customerId = (int) $request->input('customer_id');
-            $cust       = Customer::find($customerId);
-            $customerName = $request->input('customer_name') ?: ($cust->customer_name ?? '');
-            $mobile       = $request->input('mobile') ?: ($cust->customer_mobile ?? '');
-        }
+        $isRetail   = $validated['customer_type'] === 'retail';
+        $customerId = $isRetail ? 0 : (int) $request->input('customer_id');
+        $cust       = $isRetail ? null : Customer::find($customerId);
+
+        $customerName = $request->input('customer_name') ?: ($cust->customer_name ?? '');
+        $mobile       = $request->input('mobile')        ?: ($cust->customer_mobile ?? '');
 
         DB::transaction(function () use ($request, $daily_order, $customerId, $customerName, $mobile) {
-            $oldAmount = (float) $daily_order->amount;
-            $newAmount = (float) $request->input('amount');
+            $oldAmount = (float) ($daily_order->total_amount ?? 0);
+            $newAmount = (float) $request->input('total_amount', 0); // ✅ match form field 'amount'
 
-            $daily_order->update([
-                'customer_id'   => $customerId,
-                'customer_name' => $customerName,
-                'mobile'        => $mobile,
-                'location'      => $request->input('location'),
-                'rent_date'     => $request->input('rent_date'),
-                'service_type'  => $request->input('service_type'),
-                'amount'        => $newAmount,
-                'iStatus'       => (int) $request->input('iStatus', 1),
-            ]);
+            // ✅ Direct assignment avoids $fillable issues; ensures customer_id is set (never null)
+            $daily_order->customer_id       = (int) $customerId;
+            $daily_order->customer_name     = $customerName;
+            $daily_order->mobile            = $mobile;
+            $daily_order->location          = $request->input('location');
+            $daily_order->rent_date         = $request->input('rent_date');
+            $daily_order->placed_the_tanker = $request->input('placed_the_tanker');
+            $daily_order->empty_the_tanker  = $request->input('empty_the_tanker');
+            $daily_order->filled_the_tanker = $request->input('filled_the_tanker');
+            $daily_order->total_amount      = $newAmount;
+            $daily_order->isPaid            = (int) $request->input('isPaid', 1);
+            $daily_order->save();
 
-            // Ledger: adjust by delta if amount changed
-            $delta = $newAmount - $oldAmount; // +ve => extra DEBIT; -ve => CREDIT
+            // ✅ Safe delta
+            $delta = $newAmount - $oldAmount;
             if (abs($delta) > 0.0001) {
-                // NOTE: Your LedgerService adjustForOrderDelta signature is int $delta.
-                // If you want paise precision, change it to float in the service.
                 $this->ledger->adjustForOrderDelta($daily_order, (int) round($delta));
             }
         });
@@ -139,16 +139,43 @@ class DailyOrderController extends Controller
         return redirect()->route('daily-orders.index')->with('success','Order updated.');
     }
 
-    public function destroy(DailyOrder $daily_order)
-    {
-        DB::transaction(function () use ($daily_order) {
-            // Ledger: reverse full order amount as CREDIT
-            $this->ledger->reverseOrder($daily_order, 'Order reversed');
-            $daily_order->update(['isDelete' => 1]);
-        });
 
-        return redirect()->route('daily-orders.index')->with('success','Order deleted.');
+   public function destroy(string $id, LedgerService $ledger)
+    {
+        try {
+            // Fetch by primary key (works even if implicit binding is misconfigured)
+            $order = DailyOrder::whereKey($id)->firstOrFail();
+
+            DB::transaction(function () use ($order, $ledger) {
+                $amount     = (float) ($order->total_amount ?? 0);
+                $customerId = (int)   ($order->customer_id ?? 0);
+
+                // 1) Add reversal CREDIT WITHOUT tying to the order (avoids FK blocks)
+                if ($amount > 0) {
+                    $ledger->addCreditPayment(
+                        $customerId,
+                        $amount,
+                        'Order reversed (Order#'.$order->daily_order_id.')',
+                        now()->toDateString(),
+                        null // ← do NOT link to the order
+                    );
+                }
+
+                // 2) Detach any ledger rows pointing to this order (safe even w/o FK)
+                DailyOrderLedger::where('daily_order_id', $order->daily_order_id)
+                    ->update(['daily_order_id' => null]);
+
+                // 3) Delete the order
+                $order->delete();
+            });
+
+            return redirect()->route('daily-orders.index')->with('success', 'Order deleted.');
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->with('error', 'Delete failed: '.$e->getMessage());
+        }
     }
+
 
     /**
      * NEW: Receive a payment (credit) against an order (partial or full).
@@ -156,12 +183,12 @@ class DailyOrderController extends Controller
     public function receivePayment(Request $request, DailyOrder $daily_order)
     {
         $request->validate([
-            'amount'     => ['required','numeric','min:0.01'],
+            'total_amount'     => ['required','numeric','min:0.01'],
             'entry_date' => ['nullable','date'],
             'comment'    => ['nullable','string','max:255'],
         ]);
 
-        $amount  = (float) $request->input('amount');
+        $amount  = (float) $request->input('total_amount');
         $comment = $request->input('comment', 'Payment received');
         $date    = $request->input('entry_date'); // nullable -> defaults to today in service
 
@@ -185,9 +212,11 @@ class DailyOrderController extends Controller
             'mobile'        => ['required_if:customer_type,retail','nullable','regex:/^[0-9]{10,15}$/'],
             'location'      => ['required','string','max:255'],
             'rent_date'     => ['required','date'],
-            'service_type'  => ['required','string','max:100'],
-            'amount'        => ['required','numeric','min:0'],
-            'iStatus'       => ['nullable','integer','in:0,1'],
+            'placed_the_tanker'  => ['nullable','int'],
+            'empty_the_tanker'  => ['nullable','int'],
+            'filled_the_tanker'  => ['nullable','int'],
+            'total_amount'        => ['required','numeric','min:0'],
+            'isPaid'       => ['nullable','integer','in:0,1'],
         ];
 
         $messages = [

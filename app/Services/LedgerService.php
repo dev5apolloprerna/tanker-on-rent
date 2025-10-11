@@ -9,25 +9,22 @@ use Illuminate\Support\Carbon;
 
 class LedgerService
 {
-    /**
-     * Add a DEBIT entry for an order (customer owes money).
-     */
+    /** Add a DEBIT entry for an order (customer owes money). */
     public function addDebitForOrder(DailyOrder $order, string $comment = 'Order debit'): DailyOrderLedger
     {
-        return $this->append($order->customer_id, [
+        $cid = (int) ($order->customer_id ?? 0); // ✅ guard
+        return $this->append($cid, [
             'daily_order_id' => $order->daily_order_id,
             'entry_date'     => Carbon::parse($order->rent_date)->toDateString(),
             'comment'        => $comment,
-            'debit_bl'       => number_format($order->amount, 2, '.', ''),
+            'debit_bl'       => number_format((float)$order->total_amount, 2, '.', ''),
             'credit_bl'      => 0,
             'iStatus'        => 1,
             'isDelete'       => 0,
         ]);
     }
 
-    /**
-     * Add a CREDIT entry (payment received).
-     */
+    /** Add a CREDIT entry (payment received). */
     public function addCreditPayment(
         int $customerId,
         float $amount,
@@ -35,12 +32,13 @@ class LedgerService
         ?string $entryDate = null,
         ?int $dailyOrderId = null
     ): DailyOrderLedger {
-        return $this->append($customerId, [
+        $cid = (int) $customerId; // ✅ normalize
+        return $this->append($cid, [
             'daily_order_id' => $dailyOrderId,
             'entry_date'     => $entryDate ? Carbon::parse($entryDate)->toDateString() : now()->toDateString(),
             'comment'        => $comment,
             'debit_bl'       => 0,
-            'credit_bl'      => number_format($amount, 2, '.', ''),
+            'credit_bl'      => number_format((float)$amount, 2, '.', ''),
             'iStatus'        => 1,
             'isDelete'       => 0,
         ]);
@@ -48,14 +46,15 @@ class LedgerService
 
     /**
      * Adjust by delta (used when order amount changes).
-     * Positive delta -> more DEBIT; Negative delta -> CREDIT (reduce liability).
+     * Positive delta -> DEBIT; Negative delta -> CREDIT.
      */
     public function adjustForOrderDelta(DailyOrder $order, int $delta): ?DailyOrderLedger
     {
         if ($delta === 0) return null;
 
+        $cid = (int) ($order->customer_id ?? 0); // ✅ guard
         if ($delta > 0) {
-            return $this->append($order->customer_id, [
+            return $this->append($cid, [
                 'daily_order_id' => $order->daily_order_id,
                 'entry_date'     => now()->toDateString(),
                 'comment'        => 'Order amount increased',
@@ -66,8 +65,7 @@ class LedgerService
             ]);
         }
 
-        // delta < 0 -> credit
-        return $this->append($order->customer_id, [
+        return $this->append($cid, [
             'daily_order_id' => $order->daily_order_id,
             'entry_date'     => now()->toDateString(),
             'comment'        => 'Order amount decreased',
@@ -78,17 +76,16 @@ class LedgerService
         ]);
     }
 
-    /**
-     * Mark order reversal on delete (credit back full amount).
-     */
+    /** Mark order reversal on delete (credit back full amount). */
     public function reverseOrder(DailyOrder $order, string $comment = 'Order reversed'): DailyOrderLedger
     {
-        return $this->append($order->customer_id, [
+        $cid = (int) ($order->customer_id ?? 0); // ✅ guard
+        return $this->append($cid, [
             'daily_order_id' => $order->daily_order_id,
             'entry_date'     => now()->toDateString(),
             'comment'        => $comment,
             'debit_bl'       => 0,
-            'credit_bl'      => number_format($order->amount, 2, '.', ''),
+            'credit_bl'      => number_format((float)$order->total_amount, 2, '.', ''),
             'iStatus'        => 1,
             'isDelete'       => 0,
         ]);
@@ -96,9 +93,12 @@ class LedgerService
 
     /**
      * Core appender with running balance (uses SELECT ... FOR UPDATE).
+     * Accepts nullable id and normalizes to 0 to avoid type errors.
      */
-    protected function append(int $customerId, array $payload): DailyOrderLedger
+    protected function append(?int $customerId, array $payload): DailyOrderLedger
     {
+        $customerId = (int) ($customerId ?? 0); // ✅ normalize once
+
         return DB::transaction(function () use ($customerId, $payload) {
             // Lock the last row for this customer to compute a safe running balance
             $last = DailyOrderLedger::where('customer_id', $customerId)
@@ -107,10 +107,10 @@ class LedgerService
                 ->lockForUpdate()
                 ->first();
 
-            $prevClosing = $last ? (float)$last->closing_bl : 0.0;
+            $prevClosing = $last ? (float) $last->closing_bl : 0.0;
 
-            $debit  = (float)($payload['debit_bl']  ?? 0);
-            $credit = (float)($payload['credit_bl'] ?? 0);
+            $debit  = (float) ($payload['debit_bl']  ?? 0);
+            $credit = (float) ($payload['credit_bl'] ?? 0);
 
             $closing = $prevClosing + $debit - $credit;
 

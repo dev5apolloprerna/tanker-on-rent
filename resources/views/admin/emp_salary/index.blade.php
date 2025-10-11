@@ -95,7 +95,7 @@
                   <td>
 
 
-                    <button type="button"
+                   <!--  <button type="button"
                             class="btn btn-sm btn-warning editBtn"
                             data-bs-toggle="modal"
                             data-bs-target="#salaryModal"
@@ -111,7 +111,7 @@
                             data-status="{{ (int)$row->iStatus }}"
                     >
                           <i class="fa fa-edit"></i>
-                        </button>
+                        </button> -->
 
 
                     <form method="POST" action="{{ route('emp-salaries.destroy', $row->emp_salary_id) }}" class="d-inline">
@@ -273,6 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
       amtEl.value = data.amount;
       deduct.value = data.emi_amount;
       daily_wages.value = data.daily_wages;
+      mobileEl.value = data.mobile;
       hint.textContent = `${data.note} (P=${data.counts.P ?? 0}, H=${data.counts.H ?? 0}, A=${data.counts.A ?? 0})`;
     } else {
       hint.textContent = '';

@@ -44,6 +44,15 @@
                 </div>
             </div>
 
+@if ($errors->any())
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
+@endif
 
     <form method="POST" id="orderForm" action="{{ $action }}">
       @csrf
@@ -98,7 +107,7 @@
         <input type="text" name="mobile" id="mobile" class="form-control"
                placeholder="10-digit mobile" inputmode="numeric" pattern="[0-9]{10,15}"
                value="{{ old('mobile', $isEdit ? $order->mobile : '') }}" required>
-        <small class="text-muted">Digits only (10–15)</small>
+        <!-- <small class="text-muted">Digits only (10–15)</small> -->
       </div>
 
       {{-- Location --}}
@@ -111,30 +120,42 @@
       {{-- Rent Date / Service Type --}}
       <div class="row g-2">
         <div class="col-md-6">
-          <label class="form-label">Rent Date <span class="text-danger">*</span></label>
+          <label class="form-label">Service Date <span class="text-danger">*</span></label>
           <input type="date" name="rent_date" id="rent_date" class="form-control"
-                 value="{{ old('rent_date', $isEdit ? \Illuminate\Support\Str::of($order->rent_date)->substr(0,10) : '') }}" required>
+          value="{{ old('rent_date', $isEdit ? $order->rent_date?->format('Y-m-d') : now()->toDateString()) }}" required>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Service Type <span class="text-danger">*</span></label>
-          <input type="text" name="service_type" id="service_type" class="form-control"
+          <label class="form-label">Placed The Tanker <span class="text-danger">*</span></label>
+          <input type="text" name="placed_the_tanker" id="placed_the_tanker" class="form-control"
                  placeholder="e.g. Tanker"
-                 value="{{ old('service_type', $isEdit ? $order->service_type : '') }}" required>
+                 value="{{ old('placed_the_tanker', $isEdit ? $order->placed_the_tanker : '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Empty The Tanker<span class="text-danger">*</span></label>
+          <input type="text" name="empty_the_tanker" id="empty_the_tanker" class="form-control"
+                 placeholder="e.g. Tanker"
+                 value="{{ old('empty_the_tanker', $isEdit ? $order->empty_the_tanker : '') }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Filled The Tanker<span class="text-danger">*</span></label>
+          <input type="text" name="filled_the_tanker" id="filled_the_tanker" class="form-control"
+                 placeholder="e.g. Tanker"
+                 value="{{ old('filled_the_tanker', $isEdit ? $order->filled_the_tanker : '') }}" required>
         </div>
       </div>
 
       {{-- Amount / Status --}}
       <div class="row g-2 mt-2">
         <div class="col-md-6">
-          <label class="form-label">Amount (₹) <span class="text-danger">*</span></label>
-          <input type="number" min="0" name="amount" id="amount" class="form-control"
-                 value="{{ old('amount', $isEdit ? $order->amount : '') }}" required>
+          <label class="form-label">Total Amount (₹) <span class="text-danger">*</span></label>
+          <input type="number" min="0" name="total_amount" id="amount" class="form-control"
+                 value="{{ old('amount', $isEdit ? $order->amount : '') }}" placeholder="Automatic Calculated.." readonly>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Status</label>
-          <select name="iStatus" id="iStatus" class="form-select">
-            <option value="1" {{ (string)old('iStatus', $isEdit ? $order->iStatus : 1) === '1' ? 'selected' : '' }}>Active</option>
-            <option value="0" {{ (string)old('iStatus', $isEdit ? $order->iStatus : 1) === '0' ? 'selected' : '' }}>Inactive</option>
+          <label class="form-label">Payment Status</label>
+          <select name="isPaid" id="isPaid" class="form-select">
+            <option value="1" {{ (string)old('isPaid', $isEdit ? $order->isPaid : 1) === '1' ? 'selected' : '' }}>Paid</option>
+            <option value="0" {{ (string)old('isPaid', $isEdit ? $order->isPaid : 0) === '0' ? 'selected' : '' }}>Unpaid</option>
           </select>
         </div>
       </div>
@@ -154,6 +175,22 @@
 @endsection
 @section('scripts')
 <script>
+  (function(){
+  const placed = document.getElementById('placed_the_tanker');
+  const empty  = document.getElementById('empty_the_tanker');
+  const filled = document.getElementById('filled_the_tanker');
+  const amount = document.getElementById('amount');
+
+  const toNum = v => Number(v || 0);
+
+  function recalc(){
+    amount.value = toNum(placed.value) + toNum(empty.value) + toNum(filled.value);
+  }
+
+  [placed, empty, filled].forEach(el => el && el.addEventListener('input', recalc));
+  recalc(); // prefill on edit
+})();
+
 (function(){
   // Form + controls (these exist inside the included partial)
   const form          = document.getElementById('orderForm');

@@ -41,7 +41,17 @@
               <tbody>
                 @forelse ($summary as $row)
                 <tr>
-                  <td>{{ $row->employee_name }}</td>
+                  <td>
+                  <button type="button"
+                          class="btn btn-link p-0 js-emp-detail"
+                          data-employee-id="{{ $row->emp_id }}"
+                          data-employee-name="{{ $row->employee_name }}">
+                    {{ $row->employee_name }}
+                  </button>
+                </td>
+
+
+                  <!-- <td>{{ $row->employee_name }}</td> -->
                   <td>{{ number_format($row->daily_wages, 2) }}</td>
                   <td><span class="badge bg-success">{{ $row->present_days }}</span></td>
                   <td><span class="badge bg-danger">{{ $row->absent_days }}</span></td>
@@ -62,7 +72,27 @@
             </table>
           </div>
 
-          <h6 class="text-secondary fw-semibold mb-3">Detailed Attendance</h6>
+
+          {{-- Modal container --}}
+<div class="modal fade" id="employeeDetailModal" tabindex="-1" aria-labelledby="employeeDetailLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="employeeDetailLabel">Employee Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="empDetailBody">
+        <div class="text-center p-5">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-2 small text-muted">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+          <!-- <h6 class="text-secondary fw-semibold mb-3">Detailed Attendance</h6>
           <div class="table-responsive">
             <table class="table table-hover align-middle table-bordered">
               <thead class="table-primary">
@@ -97,10 +127,66 @@
               </tbody>
             </table>
           </div>
-        </div>
+        </div> -->
       </div>
 
     </div>
   </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const modalEl = document.getElementById('employeeDetailModal');
+  const modalBody = document.getElementById('empDetailBody');
+  const modalTitle = document.getElementById('employeeDetailLabel');
+  const modal = new bootstrap.Modal(modalEl);
+
+  function currentRange() {
+    const fromEl = document.querySelector('input[name="from_date"]');
+    const toEl   = document.querySelector('input[name="to_date"]');
+    return {
+      from: fromEl ? fromEl.value : '',
+      to:   toEl   ? toEl.value   : '',
+    };
+  }
+
+  document.querySelectorAll('.js-emp-detail').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const employeeId = btn.dataset.employeeId;
+      const employeeName = btn.dataset.employeeName || 'Employee';
+      const { from, to } = currentRange();
+
+      modalTitle.textContent = employeeName + ' — Details';
+      modalBody.innerHTML = `
+        <div class="text-center p-5">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-2 small text-muted">Loading…</div>
+        </div>`;
+
+      modal.show();
+
+      try {
+        const url = `{{ route('admin.attendance-report.employee-detail') }}`
+                  + `?employee_id=${encodeURIComponent(employeeId)}`
+                  + `&from=${encodeURIComponent(from)}`
+                  + `&to=${encodeURIComponent(to)}`;
+
+        const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+        if (!res.ok) throw new Error('Network error');
+
+        const html = await res.text();
+        modalBody.innerHTML = html;
+      } catch (err) {
+        modalBody.innerHTML = `
+          <div class="alert alert-danger m-0">
+            Failed to load details. Please try again.
+          </div>`;
+      }
+    });
+  });
+});
+</script>
 @endsection

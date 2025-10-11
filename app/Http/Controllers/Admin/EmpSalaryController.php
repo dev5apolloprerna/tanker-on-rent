@@ -126,8 +126,8 @@ class EmpSalaryController extends Controller
         return response()->json([
             'ok'          => true,
             'daily_wages' => $emp->daily_wages,
-            'emi_amount' => $withdrawals->emi_amount,
-            // 'mobile'      => $att->mobile_recharge ?? 50,
+            'emi_amount' => $withdrawals->emi_amount ?? 0,
+            'mobile'      => 50,
             'counts'      => ['P' => $P, 'H' => $H, 'A' => $A],
             'units'       => $units,
             'amount'      => $amount,

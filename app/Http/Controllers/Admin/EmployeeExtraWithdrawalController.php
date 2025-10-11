@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\EmployeeExtraWithdrawal;
 use App\Models\EmployeeMaster;
 use Illuminate\Validation\Rule;
@@ -66,7 +67,38 @@ class EmployeeExtraWithdrawalController extends Controller
         $data->update($validated);
         return back()->with('success', 'Withdrawal updated successfully.');
     }
+    public function employeeDetail(Request $request)
+    {
+        $request->validate(['emp_id' => 'required|integer']);
+        $empId = (int) $request->emp_id;
 
+        // Basic employee info (assumes employees.emp_id, employees.name)
+        $employee = DB::table('employee_master')->where('emp_id', $empId)->first();
+
+        // All withdrawals for this employee
+        $withdrawals = DB::table('employee_extra_withdrawal')
+            ->select('withdrawal_date','amount','reason','emi_amount','remaining_amount')
+            ->where('emp_id', $empId)
+            ->orderByDesc('withdrawal_date')
+            ->get();
+
+        // All salary rows (returns/deductions) for this employee
+        $returns = DB::table('emp_salary')
+            ->select('salary_date','last_date','daily_wages','salary_amount','withdrawal_deducted','mobile_recharge')
+            ->where('emp_id', $empId)
+            ->orderByDesc('salary_date')
+            ->get();
+
+        // Totals
+        $withdrawTotal = (float) $withdrawals->sum('amount');
+        $returnTotal   = (float) $returns->sum('withdrawal_deducted'); // treating this as "paid/returned"
+        $rechargeTotal = (float) $returns->sum('mobile_recharge');     // shown separately
+        $netOutstanding = $withdrawTotal - $returnTotal;
+
+        return view('admin.emp_withdrawal._employee_detail', compact(
+            'employee','withdrawals','returns','withdrawTotal','returnTotal','rechargeTotal','netOutstanding'
+        ));
+    }
     public function destroy(Request $request)
     {
         $ids = $request->ids ?? [];

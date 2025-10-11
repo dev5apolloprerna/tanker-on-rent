@@ -53,9 +53,10 @@ class PaymentController extends Controller
     {
         $order = OrderMaster::findOrFail($orderId);
 
-        $payments = OrderPayment::where('order_id', $orderId)
+        $payments = OrderPayment::with('PaymentReceivedUser')->where('order_id', $orderId)
             ->orderBy('payment_id', 'asc')
             ->get();
+           
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
 
