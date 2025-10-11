@@ -62,7 +62,7 @@
                             <thead>
                                 <tr>
                                     <th style="width:40px;"><input type="checkbox" id="checkAll"></th>
-                                    <th>Order Type</th>
+                                    <th>Rent Type</th>
                                     <th>Customer</th>
                                     <th>Tanker No</th>
                                     <th>Tanker Name</th>
@@ -97,7 +97,7 @@
                                   @endphp
                                     <tr data-id="{{ $o->order_id }}">
                                         <td><input type="checkbox" class="row-check" value="{{ $o->order_id }}"></td>
-                                        <td>{{ ucfirst($o->order_type) }}</td>
+                                        <td>{{ $o->rentPrice->rent_type }}</td>
                                         <td>
                                           <a href="javascript:void(0)"
                                             class="text-decoration-underline"
@@ -111,7 +111,6 @@
                                         <!-- <td>{{ $o->customer->customer_name ?? $o->customer_id }}</td> -->
                                         <td>{{ $o->tanker->tanker_code ?? '-' }}</td>
                                         <td>{{ $o->tanker->tanker_name ?? '-' }}</td>
-                                        <!-- <td>{{ ucfirst($o->rent_type) }}</td> -->
                                         <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
                                         <!-- <td>{{ number_format($o->advance_amount) }}</td>
                                         <td>{{ number_format($o->rent_amount) }}</td>

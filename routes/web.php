@@ -18,6 +18,10 @@ use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\EmpSalaryController;
 use App\Http\Controllers\Admin\DailyExpenceTypeController;
 use App\Http\Controllers\Admin\DailyExpenceController;
+use App\Http\Controllers\Admin\AttendanceReportController;
+
+use App\Http\Controllers\Admin\DailyOrderController;
+use App\Http\Controllers\Admin\CollectionReportController;
 
 Route::fallback(function () {
      return view('errors.404');
@@ -230,6 +234,10 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('employee-extra-withdrawal/edit/{id}', [App\Http\Controllers\Admin\EmployeeExtraWithdrawalController::class, 'edit'])->name('employee-extra-withdrawal.edit');
     Route::post('employee-extra-withdrawal/update/{id}', [App\Http\Controllers\Admin\EmployeeExtraWithdrawalController::class, 'update'])->name('employee-extra-withdrawal.update');
     Route::post('employee-extra-withdrawal/delete', [App\Http\Controllers\Admin\EmployeeExtraWithdrawalController::class, 'destroy'])->name('employee-extra-withdrawal.delete');
+
+    Route::get('admin/employee-extra-withdrawal/employee-detail',
+    [App\Http\Controllers\Admin\EmployeeExtraWithdrawalController::class, 'employeeDetail'])->name('employee-extra-withdrawal.employee-detail')->middleware('auth');
+
 });
 
 
@@ -241,6 +249,37 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
 
 Route::prefix('admin')->middleware(['auth'])->group(function () {
-    Route::any('attendance-report', [App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])
+    Route::any('attendance-report', [AttendanceReportController::class, 'index'])
          ->name('admin.attendance-report.index');
+Route::get('admin/attendance-report/employee-detail',[AttendanceReportController::class, 'employeeDetail'])->name('admin.attendance-report.employee-detail')->middleware('auth');
+
+});
+
+
+/*--------------------------------daily order controller--------------------------------------*/
+
+
+Route::prefix('daily-orders')->group(function () {
+    Route::get('/', [DailyOrderController::class, 'index'])->name('daily-orders.index');
+    Route::get('daily-orders/create', [DailyOrderController::class, 'create'])->name('daily-orders.create');
+    Route::post('/', [DailyOrderController::class, 'store'])->name('daily-orders.store');
+    Route::get('daily-orders/edit/{id}', [DailyOrderController::class, 'edit'])->name('daily-orders.edit');
+    Route::put('/{id}', [DailyOrderController::class, 'update'])->name('daily-orders.update');
+    Route::delete('/{id}', [DailyOrderController::class, 'destroy'])->name('daily-orders.destroy');
+
+    // Payments against a customer (optional daily_order_id can be passed)
+    Route::post('daily-orders/{daily_order}/payment', [DailyOrderController::class, 'receivePayment'])
+        ->name('daily-orders.payment');
+
+});
+
+
+
+// routes/web.php
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('admin/collection-report',                [CollectionReportController::class, 'index'])->name('reports.collection');
+    Route::get('admin/collection-report/day/{date}',     [CollectionReportController::class, 'day'])->where('date','\d{4}-\d{2}-\d{2}')->name('reports.collection.day');
+    Route::get('admin/collection-report/details',        [CollectionReportController::class, 'range'])->name('reports.collection.range'); // full detail for range
 });

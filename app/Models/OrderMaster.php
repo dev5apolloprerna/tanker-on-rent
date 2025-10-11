@@ -43,6 +43,13 @@ class OrderMaster extends Model
     // Relations (optional if you want eager loading in listing)
     public function customer() { return $this->belongsTo(Customer::class, 'customer_id', 'customer_id'); }
     public function tanker()   { return $this->belongsTo(Tanker::class, 'tanker_id', 'tanker_id'); }
+    public function rentPrice()
+    {
+        // FK on order_master = rent_type ; PK on rent_prices = rent_price_id
+        return $this->belongsTo(\App\Models\RentPrice::class, 'rent_type', 'rent_price_id')
+                    ->withDefault(['rent_type' => '—']); // prevents null errors
+    }
+
     public function paymentMaster() { return $this->hasOne(OrderPayment::class, 'order_id', 'order_id'); }
 
  public function dueSnapshot(?Carbon $asOf = null): array

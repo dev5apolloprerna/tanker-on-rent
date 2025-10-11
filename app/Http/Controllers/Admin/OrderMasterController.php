@@ -20,7 +20,7 @@ class OrderMasterController extends Controller
     public function index(Request $request)
     {
         $q = OrderMaster::notDeleted()->withSum('paymentMaster', 'paid_amount')
-            ->with(['customer', 'tanker']);
+            ->with(['customer', 'tanker','rentPrice']);
 
         // Search (default: order_type, rent_type, reference_name, reference_mobile_no, tanker_location)
         if ($request->filled('search')) {
@@ -157,7 +157,7 @@ class OrderMasterController extends Controller
         $order = OrderMaster::notDeleted()->findOrFail($id);
         $customers = Customer::where('iStatus', 1)->orderBy('customer_name', 'asc')->pluck('customer_name', 'customer_id');
         $tankers   = Tanker::where(['iStatus'=> 1])->orderBy('tanker_code', 'asc')->pluck('tanker_code', 'tanker_id');
-$renttype = RentPrice::select('rent_price_id','rent_type','amount')->orderBy('rent_type')->get();
+        $renttype = RentPrice::select('rent_price_id','rent_type','amount')->orderBy('rent_type')->get();
 
         return view('admin.orders.add-edit', compact('order','customers','tankers','renttype'));
     }
@@ -336,62 +336,58 @@ $renttype = RentPrice::select('rent_price_id','rent_type','amount')->orderBy('re
         return $order->dueSnapshot(); // delegate to the model method above
     }
     public function customerOrdersSummary($customerId)
-{
-    $customer = Customer::findOrFail($customerId);
+    {
+        $customer = Customer::findOrFail($customerId);
 
-    $orders = OrderMaster::with(['tanker'])
-        ->where('customer_id', $customerId)
-        ->where('isDelete', 0)
-        ->latest('rent_start_date')
-        ->get();
-
-    $orderIds = $orders->pluck('order_id')->all();
-    $payments = collect();
-    if ($orderIds) {
-        $payments = \DB::table('order_payment_master')
-            ->select('payment_id','order_id','paid_amount','created_at')
-            ->whereIn('order_id', $orderIds)
+        $orders = OrderMaster::with(['tanker'])
+            ->where('customer_id', $customerId)
             ->where('isDelete', 0)
-            ->orderBy('created_at','asc')
-            ->get()
-            ->groupBy('order_id');
+            ->latest('rent_start_date')
+            ->get();
+
+        $orderIds = $orders->pluck('order_id')->all();
+        $payments = collect();
+        if ($orderIds) {
+            $payments = \DB::table('order_payment_master')
+                ->select('payment_id','order_id','paid_amount','created_at')
+                ->whereIn('order_id', $orderIds)
+                ->where('isDelete', 0)
+                ->orderBy('created_at','asc')
+                ->get()
+                ->groupBy('order_id');
+        }
+
+        $totals = ['orders_count'=>0, 'total_due'=>0, 'paid'=>0, 'unpaid'=>0];
+        $totals['orders_count'] = $orders->count();
+
+        $dailyCount = 0; $monthlyCount = 0;
+        $receivedCount = 0; $notReceivedCount = 0;
+
+        foreach ($orders as $o) {
+            $s = $o->dueSnapshot();
+            $o->snap = $s;
+
+            $totals['total_due'] += (float) ($s['total_due'] ?? 0);
+            $totals['paid']      += (float) ($s['paid_sum']  ?? 0);
+            $totals['unpaid']    += (float) ($s['unpaid']    ?? 0);
+
+            if (($s['rent_basis'] ?? '') === 'daily') $dailyCount++; else $monthlyCount++;
+            if ((int)$o->isReceive === 1) $notReceivedCount++; else $receivedCount++;
+        }
+
+        $meta = [
+            'daily_count'       => $dailyCount,
+            'monthly_count'     => $monthlyCount,
+            'received_count'    => $receivedCount,     // isReceive == 0
+            'not_received_count'=> $notReceivedCount,  // isReceive == 1
+        ];
+
+        return view('admin.orders.customer_orders_summary', [
+            'customer' => $customer,
+            'orders'   => $orders,
+            'payments' => $payments,
+            'totals'   => $totals,
+            'meta'     => $meta,
+        ]);
     }
-
-    $totals = ['orders_count'=>0, 'total_due'=>0, 'paid'=>0, 'unpaid'=>0];
-    $totals['orders_count'] = $orders->count();
-
-    $dailyCount = 0; $monthlyCount = 0;
-    $receivedCount = 0; $notReceivedCount = 0;
-
-    foreach ($orders as $o) {
-        $s = $o->dueSnapshot();
-        $o->snap = $s;
-
-        $totals['total_due'] += (float) ($s['total_due'] ?? 0);
-        $totals['paid']      += (float) ($s['paid_sum']  ?? 0);
-        $totals['unpaid']    += (float) ($s['unpaid']    ?? 0);
-
-        if (($s['rent_basis'] ?? '') === 'daily') $dailyCount++; else $monthlyCount++;
-        if ((int)$o->isReceive === 1) $notReceivedCount++; else $receivedCount++;
-    }
-
-    $meta = [
-        'daily_count'       => $dailyCount,
-        'monthly_count'     => $monthlyCount,
-        'received_count'    => $receivedCount,     // isReceive == 0
-        'not_received_count'=> $notReceivedCount,  // isReceive == 1
-    ];
-
-    return view('admin.orders.customer_orders_summary', [
-        'customer' => $customer,
-        'orders'   => $orders,
-        'payments' => $payments,
-        'totals'   => $totals,
-        'meta'     => $meta,
-    ]);
-}
-
-
-
-
 }

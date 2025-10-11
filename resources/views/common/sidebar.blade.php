@@ -118,6 +118,11 @@ $roleid = Auth::guard('web_employees')->user()->role_id;
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a href="{{ route('daily-orders.index') }}" class="nav-link {{ request()->is('admin/daily-orders*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-file-invoice"></i>Daily Order
+                            </a>
+                        </li>
+                        <li class="nav-item">
                           <a href="{{ route('employee-extra-withdrawal.index') }}"
                              class="nav-link {{ request()->is('admin/employee-extra-withdrawal*') ? 'active' : '' }}">
                              <i class="fas fa-hand-holding-usd me-2"></i>
@@ -148,6 +153,12 @@ $roleid = Auth::guard('web_employees')->user()->role_id;
                                 <span>Attendance Report</span>
                               </a>
                             </li>
+                             <li class="nav-item">
+                                  <a class="nav-link {{ request()->is('reports.collection','reports.collection.*') ? 'active' : '' }}"
+                                     href="{{ route('reports.collection') }}">
+                                    <i class="fa fa-wallet me-2"></i> Collection Report
+                                  </a>
+                                </li>
 
 
                         </ul>

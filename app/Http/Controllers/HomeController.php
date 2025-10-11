@@ -110,8 +110,72 @@ class HomeController extends Controller
                 $totalUnpaid += $snap['unpaid'];
             }
 
+    // collection amount
+            $todayDate       = now()->toDateString();
+        $monthStart  = now()->startOfMonth()->toDateString();
+        $monthEnd    = now()->endOfMonth()->toDateString();
 
-                return view('home',compact('customerCount','tankerCount','intankerCount','outtankerCount','employeeTotal','godownTotal','vendorCount','orderCount','todayTotal', 'monthTotal', 'todayCount', 'monthCount', 'monthDailySeries','presentCount','absentCount','today', 'totalPaid', 'totalUnpaid'));
+        // For order payments, use paid_at if present, else created_at
+        $orderDateExpr = DB::raw('COALESCE(DATE(p.payment_date), DATE(p.created_at))');
+
+        // -------- TODAY --------
+        $dailyToday = (float) DB::table('daily_order_ledger as l')
+            ->where('l.iStatus', 1)->where('l.isDelete', 0)
+            ->where('l.credit_bl', '>', 0)
+            ->whereBetween('l.entry_date', [$todayDate, $todayDate])
+            ->sum('l.credit_bl');
+
+        $orderToday = (float) DB::table('order_payment_master as p')
+            ->where('p.iStatus', 1)->where('p.isDelete', 0)
+            ->whereBetween($orderDateExpr, [$todayDate, $todayDate])
+            ->sum('p.paid_amount');
+
+        $todayTotals = [
+            'total'        => $dailyToday + $orderToday,
+            'daily_orders' => $dailyToday,
+            'orders'       => $orderToday,
+        ];
+
+        // -------- THIS MONTH --------
+        $dailyMonth = (float) DB::table('daily_order_ledger as l')
+            ->where('l.iStatus', 1)->where('l.isDelete', 0)
+            ->where('l.credit_bl', '>', 0)
+            ->whereBetween('l.entry_date', [$monthStart, $monthEnd])
+            ->sum('l.credit_bl');
+
+        $orderMonth = (float) DB::table('order_payment_master as p')
+            ->where('p.iStatus', 1)->where('p.isDelete', 0)
+            ->whereBetween($orderDateExpr, [$monthStart, $monthEnd])
+            ->sum('p.paid_amount');
+
+        $monthTotals = [
+            'total'        => $dailyMonth + $orderMonth,
+            'daily_orders' => $dailyMonth,
+            'orders'       => $orderMonth,
+        ];
+
+        // -------- ALL TIME --------
+        $dailyAll = (float) DB::table('daily_order_ledger as l')
+            ->where('l.iStatus', 1)->where('l.isDelete', 0)
+            ->where('l.credit_bl', '>', 0)
+            ->sum('l.credit_bl');
+
+        $orderAll = (float) DB::table('order_payment_master as p')
+            ->where('p.iStatus', 1)->where('p.isDelete', 0)
+            ->sum('p.paid_amount');
+
+        $allTotals = [
+            'total'        => $dailyAll + $orderAll,
+            'daily_orders' => $dailyAll,
+            'orders'       => $orderAll,
+        ];
+            $todayCollection    = $todayTotals;   // reuse existing key in your compact()
+            $thisMonthCollection = $monthTotals;
+            $allTimeCollection   = $allTotals;
+
+
+
+                return view('home',compact('customerCount','tankerCount','intankerCount','outtankerCount','employeeTotal','godownTotal','vendorCount','orderCount','todayTotal', 'monthTotal', 'todayCount', 'monthCount', 'monthDailySeries','presentCount','absentCount','today', 'totalPaid', 'totalUnpaid','todayCollection','thisMonthCollection','allTimeCollection'));
 
         } catch (\Exception $e) {
         report($e);

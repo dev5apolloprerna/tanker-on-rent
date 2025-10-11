@@ -139,9 +139,52 @@
                                         <a href="{{ route('admin.daily-expences.index',['preset' => 'month']) }}" class="btn btn-light btn-sm mt-2">View All</a>
                                       </div>
                                     </div>
-                                  </div>
-
+                                  </div>                               
+                            
                                 
+                              {{-- This Month --}}
+                                    <div class="col-md-3">
+                                      <div class="card text-white bg-success" id="cardAbsent" style="cursor:pointer">
+                                        <div class="card-body">
+                                          <h5 class="card-title">Today’s Collection</h5>
+                                          <p class="card-text fs-4">₹{{ number_format($todayCollection['total'] ?? 0, 2) }}</p>
+                                            <div class="small text-white mt-2">
+                                              Orders: ₹{{ number_format($todayCollection['orders'], 2) }} ·
+                                              Daily Orders: ₹{{ number_format($todayCollection['daily_orders'], 2) }}
+                                            </div>
+
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+
+                                    <div class="col-md-3">
+                                      <div class="card text-white bg-danger" id="cardAbsent" style="cursor:pointer">
+                                        <div class="card-body">
+                                          <h5 class="card-title">This Month’s Collection</h5>
+                                          <p class="card-text fs-4">₹{{ number_format($thisMonthCollection['total'], 2) }}</p>
+                                            <div class="small text-white mt-2">
+                                              Orders: ₹{{ number_format($thisMonthCollection['orders'], 2) }} ·
+                                              Daily Orders: ₹{{ number_format($thisMonthCollection['daily_orders'], 2) }}
+                                            </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+
+                                     <!-- <div class="col-md-3">
+                                      <div class="card text-white bg-primary" id="cardAbsent" style="cursor:pointer">
+                                        <div class="card-body">
+                                          <h5 class="card-title">All-Time Collection</h5>
+                                          <p class="card-text fs-4">₹{{ number_format($allTimeCollection['total'], 2) }}</p>
+                                            <div class="small text-white mt-2">
+                                      Orders: ₹{{ number_format($allTimeCollection['orders'], 2) }} ·
+                                      Daily Orders: ₹{{ number_format($allTimeCollection['daily_orders'], 2) }}
+                                            </div>
+                                        </div>
+                                      </div>
+                                    </div> -->
+
                                 <div></div>
                                    <div class="col-md-3">
                                       <div class="card text-white bg-success" id="cardPresent" style="cursor:pointer">
@@ -164,56 +207,9 @@
                                       </div>
                                     </div>
 
-                                {{-- (Optional) quick list for last few days --}}
-                                {{-- <div class="col-md-6">
-                                  <div class="card shadow-sm">
-                                    <div class="card-body">
-                                      <h6 class="text-muted mb-3">Daily Totals (This Month)</h6>
-                                      <ul class="list-unstyled mb-0">
-                                        @foreach($monthDailySeries as $d => $sum)
-                                          <li class="d-flex justify-content-between border-bottom py-1">
-                                            <span>{{ \Carbon\Carbon::parse($d)->format('d M') }}</span>
-                                            <strong>₹{{ number_format($sum) }}</strong>
-                                          </li>
-                                        @endforeach
-                                      </ul>
-                                    </div>
-                                  </div>
-                                </div> --}}
-                                
-                                
 
-                               <!--  <div class="col-md-3">
-                                        <div class="card" style="background: linear-gradient(135deg, #a5b4fc, #6366f1); border:0;">
-                                            <div class="card-body">
-                                                <h5 class="text-white fw-bold">Total Godowns</h5>
-                                                <h2> {{ number_format($godownTotal) }}</p>
-                                                <a href="{{ route('godown.index') }}" class="btn btn-light btn-sm mt-2">View All</a>
-                                            </div>
-                                        </div>
-                                </div> 
-                                  <div class="col-md-3">
-                                        <div class="card" style="background: linear-gradient(135deg, #66ffa6, #00c853); border:0;">
-                                            <div class="card-body">
-                                                <h5 class="text-dark fw-bold">Vendors</h5>
-                                                <h2> {{ number_format($vendorCount) }}</p>
-                                                 <a href="{{ route('vendor.index') }}" class="btn btn-light btn-sm mt-2">View All</a>
-                                            </div>
-                                        </div>                                    
-                                 </div>
 
-                                <div class="col-md-3">
-                                            <div class="card" style="background: linear-gradient(135deg, #a5b4fc, #6366f1); border:0;">
-                                                <div class="card-body">
-                                                    <h5 class="text-white fw-bold">Total Orders</h5>
-                                                    <p class="card-text fs-4">{{ number_format($orderCount) }}</p>
-                                                     <a href="{{ route('orders.index') }}" class="btn btn-light btn-sm mt-2">View All</a>
-                                                </div>
-                                            </div>
-                                    </div>-->
-
-                                      {{-- Modal --}}
-     
+                              <div></div>
                                 
                             </div>
  

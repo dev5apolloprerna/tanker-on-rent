@@ -69,9 +69,10 @@ class RentPriceController extends Controller
             return response()->json(['ok' => false, 'message' => 'rent_type required'], 422);
         }
 
+
         $amount = RentPrice::where('iStatus',1)
                   ->where('isDelete',0)
-                  ->where('rent_type',$rentType)
+                  ->where('rent_price_id',$rentType)
                   ->value('amount');
 
         if ($amount === null) {
