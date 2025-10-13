@@ -33,7 +33,7 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0">{{ $isEdit ? 'Edit Daily Order' : 'Add Daily Order' }}</h4>
                         <div class="page-title-right">
-                        	<button type="button" id="btnCancelEdit" class="btn btn-sm btn-outline-secondary {{ $isEdit ? '' : 'd-none' }}">Cancel Edit</button>
+                        	<!--<button type="button" id="btnCancelEdit" class="btn btn-sm btn-outline-secondary {{ $isEdit ? '' : 'd-none' }}">Cancel Edit</button>-->
 
                             <a href="{{ route('daily-orders.index') }}"
                                 class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">

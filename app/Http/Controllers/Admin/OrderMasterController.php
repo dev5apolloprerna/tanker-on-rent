@@ -244,7 +244,7 @@ class OrderMasterController extends Controller
     }
     public function tankerDetails($id)
     {
-        $order = OrderMaster::with(['tanker', 'customer'])->findOrFail($id);
+        $order = OrderMaster::with(['tanker', 'customer','paymentMaster.PaymentReceivedUser'])->findOrFail($id);
 
         // If you already use this snapshot everywhere:
         $snap = method_exists($order, 'dueSnapshot') ? $order->dueSnapshot() : null;

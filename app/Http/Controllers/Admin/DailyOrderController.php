@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB; // top of file
 
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class DailyOrderController extends Controller
 {
@@ -140,6 +141,45 @@ class DailyOrderController extends Controller
     }
 
 
+        public function orderPayments(int $order)
+        {
+            // Order header
+            $o = DB::table('daily_order')
+                ->where('daily_order_id', $order)
+                ->where('isDelete', 0)
+                ->first();
+
+            if (!$o) {
+                return response()->view('admin.daily_orders._order_payments', [
+                    'order' => null,
+                    'rows'  => collect(),
+                    'paid'  => 0.00,
+                    'due'   => 0.00,
+                ]);
+            }
+
+            // Only ledger rows tied to this order (payments only)
+            $rows = DB::table('daily_order_ledger')
+                ->where('daily_order_id', $order)
+                ->where('isDelete', 0)
+                ->where('iStatus', 1)
+                ->where('credit_bl', '>', 0) // payments
+                ->orderByDesc('entry_date')
+                ->orderByDesc('ledger_id')
+                ->get();
+
+            $paid = (float) $rows->sum('credit_bl');
+            $due  = max(0, (float)$o->total_amount - $paid);
+
+            return view('admin.daily_orders._payments', [
+                'order' => $o,
+                'rows'  => $rows,
+                'paid'  => $paid,
+                'due'   => $due,
+            ]);
+        }
+
+
    public function destroy(string $id, LedgerService $ledger)
     {
         try {
@@ -228,5 +268,68 @@ class DailyOrderController extends Controller
 
         return $request->validate($rules, $messages);
     }
+    public function customerPayments(Request $request, int $customer)
+    {
+        // Default: current month
+        $from = $request->filled('from')
+            ? Carbon::parse($request->get('from'))->startOfDay()
+            : now()->startOfMonth();
+        $to   = $request->filled('to')
+            ? Carbon::parse($request->get('to'))->endOfDay()
+            : now()->endOfDay();
+
+        // Customer label (fallback for retail)
+        $customerName = DB::table('daily_order')
+            ->where('customer_id', $customer)
+            ->where('isDelete', 0)
+            ->orderByDesc('daily_order_id')
+            ->value('customer_name') ?? ($customer == 0 ? 'Retail' : 'Customer '.$customer);
+
+            // Only payments that belong to an order (daily_order_id IS NOT NULL)
+            $payments = DB::table('daily_order_ledger as l')
+                ->join('daily_order as o', 'o.daily_order_id', '=', 'l.daily_order_id')
+                ->where('l.customer_id', $customer)
+                ->whereNotNull('l.daily_order_id')
+                ->where('l.isDelete', 0)
+                ->where('l.iStatus', 1)
+                ->where('l.credit_bl', '>', 0) // payments only
+                ->whereBetween('l.entry_date', [$from->toDateString(), $to->toDateString()])
+                ->orderByDesc('l.entry_date')
+                ->orderByDesc('l.ledger_id')
+                ->select([
+                    'l.ledger_id',
+                    'l.entry_date',
+                    'l.comment',
+                    'l.credit_bl',
+                    'l.closing_bl',
+                    'l.daily_order_id',
+                    'o.rent_date',
+                    'o.total_amount',
+                ])
+                ->get();
+
+            // All-time paid per order (to show accurate due)
+            $orderPaidAll = DB::table('daily_order_ledger')
+                ->where('customer_id', $customer)
+                ->whereNotNull('daily_order_id')
+                ->where('isDelete', 0)
+                ->where('iStatus', 1)
+                ->groupBy('daily_order_id')
+                ->pluck(DB::raw('SUM(credit_bl)'), 'daily_order_id'); // payments sum
+
+            $totalPaidInRange = $payments->sum('credit_bl');
+
+            return view('admin.daily_orders._payments', [
+                'customerId'       => $customer,
+                'customerName'     => $customerName,
+                'from'             => $from->toDateString(),
+                'to'               => $to->toDateString(),
+                'rows'             => $payments,
+                'orderPaidAll'     => $orderPaidAll,     // map[orderId] => paid total
+                'totalPaid'        => $totalPaidInRange, // range summary
+            ]);
+
+    }
+
 
 }

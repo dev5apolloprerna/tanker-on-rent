@@ -60,13 +60,44 @@
                       <td>{{ $r->daily_order_id }}</td>
                       <td>{{ \Carbon\Carbon::parse($r->rent_date)->format('d-m-Y') }}</td>
                       <td>
+                      <!-- @if((int)$r->customer_id === 0)
+                      {{ $r->customer_name }}
+                        <span class="badge bg-info ms-1">Retail</span>
+                      @else
+                      <button type="button"
+                              class="btn btn-link p-0 js-cust-payments"
+                              data-customer-id="{{ (int)$r->customer_id }}"
+                              data-customer-name="{{ $r->customer_name }}">
+                        {{ $r->customer_name }}
+                      </button>
+                        <span class="badge bg-secondary ms-1">Recurring</span>
+                      @endif -->
+
+                      @if((int)$r->customer_id === 0)
+                      {{ $r->customer_name }}
+                        <span class="badge bg-info ms-1">Retail</span>
+                      @else
+                      <button
+                        type="button"
+                        class="btn btn-link p-0 js-order-payments"
+                        title="View Payments"
+                        data-order-id="{{ $r->daily_order_id }}"
+                        data-customer-name="{{ $r->customer_name }}"
+                      >
+                        {{ $r->customer_name }}
+                      </button>
+                        <span class="badge bg-secondary ms-1">Recurring</span>
+                      @endif
+                    </td>
+
+                      <!-- <td>
                         {{ $r->customer_name }}
                         @if((int)$r->customer_id === 0)
                           <span class="badge bg-info ms-1">Retail</span>
                         @else
                           <span class="badge bg-secondary ms-1">Recurring</span>
                         @endif
-                      </td>
+                      </td> -->
                       <td>{{ $r->mobile }}</td>
                       <td>{{ $r->service_type }}</td>
                       <td class="text-end">₹{{ number_format((float)$r->total_amount, 2) }}</td>
@@ -94,6 +125,9 @@
                             data-customer-id="{{ $r->customer_id }}"
                             data-customer-name="{{ $r->customer_name }}"
                             data-total-amount="{{ $r->total_amount }}"
+                            data-paid="{{ $paid }}"
+                            data-due="{{ $due }}"
+
                             data-order-date="{{ \Carbon\Carbon::parse($r->rent_date)->format('Y-m-d') }}"
                           ><i class="fas fa-inr"></i></button>
                       </td>
@@ -143,10 +177,12 @@
             <div class="small text-muted" id="payOrderInfo">Order: —</div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Amount (₹) <span class="text-danger">*</span></label>
-            <input type="number" step="0.01" min="0.01" class="form-control" name="total_amount" id="payAmount" required>
-          </div>
+         <div class="mb-3">
+          <label class="form-label">Amount (₹) <span class="text-danger">*</span></label>
+          <input type="number" step="0.01" min="0.01" class="form-control" name="total_amount" id="payAmount" required>
+          <div id="payAmountError" class="invalid-feedback d-block"></div>
+        </div>
+
 
           <div class="mb-3">
             <label class="form-label">Date</label>
@@ -164,6 +200,25 @@
           <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+
+{{-- Order Payments Modal --}}
+<div class="modal fade" id="orderPaymentsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="orderPayTitle">Order Payments</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="orderPayBody">
+        <div class="p-5 text-center">
+          <div class="spinner-border"></div>
+          <div class="small text-muted mt-2">Loading…</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -204,5 +259,103 @@
     });
   });
 })();
+
+
+(function(){ 
+  const paymentForm  = document.getElementById('paymentForm');
+  const payAmount    = document.getElementById('payAmount');
+  const payErr       = document.getElementById('payAmountError');
+  const saveBtn      = paymentForm.querySelector('.btn.btn-success');
+
+  let currentDue = 0;
+
+  function fmtINR(n){
+    return '₹' + (Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function validatePay(){
+    const val = parseFloat(payAmount.value || '0');
+    if (currentDue <= 0.0001) {
+      payAmount.classList.add('is-invalid');
+      payErr.textContent = 'This order is already fully paid.';
+      saveBtn.disabled = true;
+      return false;
+    }
+    if (isNaN(val) || val <= 0) {
+      payAmount.classList.add('is-invalid');
+      payErr.textContent = 'Enter a valid amount greater than 0.';
+      saveBtn.disabled = true;
+      return false;
+    }
+    if (val - currentDue > 0.0001) {
+      payAmount.classList.add('is-invalid');
+      payErr.textContent = `Payment exceeds due amount (Due: ${fmtINR(currentDue)}).`;
+      saveBtn.disabled = true;
+      return false;
+    }
+    payAmount.classList.remove('is-invalid');
+    payErr.textContent = '';
+    saveBtn.disabled = false;
+    return true;
+  }
+
+  // When Pay button opens the modal, prefill & validate
+  document.querySelectorAll('.btnPay').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const due  = parseFloat(btn.dataset.due || '0') || 0;
+      currentDue = Math.max(0, due);
+
+      // Prefill amount with the remaining due (you can change to empty if you prefer)
+      payAmount.value = currentDue > 0 ? currentDue.toFixed(2) : '';
+      validatePay();
+    });
+  });
+
+  payAmount.addEventListener('input', validatePay);
+
+  // Final guard on submit (prevents accidental submit)
+  paymentForm.addEventListener('submit', (e) => {
+    if (!validatePay()) e.preventDefault();
+  });
+})();
+
+
+// ddetail view 
+
+
+(function(){
+  const modalEl = document.getElementById('orderPaymentsModal');
+  const modal   = new bootstrap.Modal(modalEl);
+  const titleEl = document.getElementById('orderPayTitle');
+  const bodyEl  = document.getElementById('orderPayBody');
+
+  document.querySelectorAll('.js-order-payments').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const orderId = btn.dataset.orderId;
+      const cust    = btn.dataset.customerName || 'Customer';
+
+      titleEl.textContent = `Order #${orderId} — Payments`;
+      bodyEl.innerHTML = `
+        <div class="p-5 text-center">
+          <div class="spinner-border"></div>
+          <div class="small text-muted mt-2">Loading…</div>
+        </div>`;
+      modal.show();
+
+      const url = "{{ route('daily-orders.order-payments', ':id') }}"
+        .replace(':id', encodeURIComponent(orderId));
+
+      try {
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+        const html = await res.text();
+        bodyEl.innerHTML = html;
+      } catch (e) {
+        bodyEl.innerHTML = `<div class="alert alert-danger mb-0">Failed to load payments.</div>`;
+      }
+    });
+  });
+})();
+
 </script>
 @endsection
+

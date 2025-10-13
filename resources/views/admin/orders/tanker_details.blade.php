@@ -52,6 +52,14 @@
     <h6 class="card-header mt-4">Payment Detail</h6>
     @if($snap)
       <div class="col-md-3">
+        <div class="text-muted ">Payment Date</div>
+        <div class="fw-semibold">{{ \Carbon\Carbon::parse($order->payment_date)->format('d-M-Y') }}</div>
+      </div>
+       <div class="col-md-3">
+        <div class="text-muted ">Payment Received By</div>
+        <div class="fw-semibold">{{ $order->paymentMaster->PaymentReceivedUser->name ?? $order->paymentMaster->name }}</div>
+      </div>
+      <div class="col-md-3">
         <div class="text-muted ">Rent</div>
         <div class="fw-semibold">₹{{ number_format($snap['base']) }}</div>
       </div>

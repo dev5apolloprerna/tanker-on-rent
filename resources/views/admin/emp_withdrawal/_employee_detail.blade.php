@@ -57,6 +57,7 @@
                 <tr>
                   <th style="width:120px">From</th>
                   <th style="width:120px">To</th>
+                  <th style="width:120px">Salary</th>
                   <th class="text-end" style="width:130px">Deducted (₹)</th>
                   <th class="text-end" style="width:130px">Recharge (₹)</th>
                   <th class="text-end" style="width:130px">Salary (₹)</th>
@@ -64,9 +65,17 @@
               </thead>
               <tbody>
                 @forelse($returns as $r)
+                @php
+                    // Base (attendance) = Net + Withdrawal − Mobile
+                    $salary = (float)($r->salary_amount ?? 0)
+                            + (float)($r->withdrawal_deducted ?? 0)
+                            - (float)($r->mobile_recharge ?? 0);
+                  @endphp
+
                   <tr>
                     <td>{{ \Carbon\Carbon::parse($r->salary_date)->format('d-m-Y') }}</td>
                     <td>{{ $r->last_date ? \Carbon\Carbon::parse($r->last_date)->format('d-m-Y') : '-' }}</td>
+                    <td class="text-end">₹{{ $salary }}</td>
                     <td class="text-end">₹{{ number_format($r->withdrawal_deducted ?? 0, 2) }}</td>
                     <td class="text-end">₹{{ number_format($r->mobile_recharge ?? 0, 2) }}</td>
                     <td class="text-end">₹{{ number_format($r->salary_amount ?? 0, 2) }}</td>

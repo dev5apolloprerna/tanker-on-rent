@@ -29,7 +29,8 @@ class AttendanceReportController extends Controller
                 'emp_id',
                 DB::raw("SUM(CASE WHEN status = 'P' THEN 1 WHEN status = 'H' THEN 0.5 ELSE 0 END) as present_days"),
                 DB::raw("SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as absent_days"),
-                DB::raw("SUM(CASE WHEN status = 'H' THEN 1 ELSE 0 END) as half_days")
+                DB::raw("SUM(CASE WHEN status = 'H' THEN 1 ELSE 0 END) as half_days"),
+                DB::raw("SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) as full_days")
             )
             ->whereBetween('attendance_date', [$from, $to])
             ->groupBy('emp_id')

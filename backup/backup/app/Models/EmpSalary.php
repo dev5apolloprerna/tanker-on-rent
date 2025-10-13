@@ -11,7 +11,7 @@ class EmpSalary extends Model
     public $timestamps = false; // DB handles timestamps
 
     protected $fillable = [
-        'emp_id', 'salary_date', 'last_date','daily_wages','salary_amount', 'iStatus', 'isDelete'
+        'emp_salary_id', 'emp_id', 'salary_date', 'last_date', 'daily_wages', 'salary_amount', 'withdrawal_deducted', 'withdrawal_id', 'mobile_recharge', 'iStatus', 'isDelete'
     ];
 
     public function employee()
