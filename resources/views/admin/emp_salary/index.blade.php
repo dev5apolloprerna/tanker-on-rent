@@ -2,6 +2,10 @@
 @section('title','Employee Salary')
 
 @section('content')
+<style>
+  #amount_hint { white-space: pre-wrap; letter-spacing: .15px; }
+</style>
+
 <div class="main-content">
   <div class="page-content">
     <div class="container-fluid">
@@ -192,7 +196,9 @@
           <input type="number" min="0" name="salary_amount" id="salary_amount"
                  class="form-control" value="{{ old('salary_amount') }}" placeholder="Auto-calculated…" required>
         </div>
-        <div class="large text-primary" id="amount_hint"></div>
+<div id="amount_hint"
+     class="fw-bold text-black font-monospace bg-light rounded px-2 py-1"
+     aria-live="polite"></div>
 
       <div class="row g-2">
           <div class="col-md-6">
@@ -201,10 +207,20 @@
                    value="{{ old('mobile_recharge') }}" placeholder="Amount">
           </div>
           <div class="col-md-6">
-          <label class="form-label">Withdrawal Deduction (₹)</label>
-          <input type="number" min="0" name="withdrawal_deducted"  id="withdrawal_amount" class="form-control" value="{{ old('withdrawal_amount') }}">
-          <small class="text-muted">Auto-deducted from active employee withdrawals.</small>
-          </div>
+            <label class="form-label">Withdrawal Deduction (₹)</label>
+            <input type="number" min="0" name="withdrawal_deducted" id="withdrawal_amount"
+                   class="form-control @error('withdrawal_deducted') is-invalid @enderror"
+                   value="{{ old('withdrawal_deducted') }}">
+            <small class="text-muted">Auto-deducted from active employee withdrawals.</small>
+
+            @error('withdrawal_deducted')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+
+            <div id="withdraw_error" class="invalid-feedback d-block"></div>
+            <div id="net_hint" class="form-text mt-1"></div>
+
+            </div>
         </div>
 
         <div class="mt-3">
@@ -228,6 +244,7 @@
 @endsection
 @section('scripts')
 <script>
+
 document.addEventListener('DOMContentLoaded', function () {
   const modal      = document.getElementById('salaryModal');
   const form       = document.getElementById('salaryForm');
@@ -247,6 +264,55 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let isEdit   = false;
   let fromAuto = true; // if user types From manually, we stop auto-overwriting
+
+  const netHint   = document.getElementById('net_hint');
+  const withdrawErr = document.getElementById('withdraw_error');
+  const submitBtn = document.querySelector('#salaryForm .btn.btn-primary');
+
+  function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function fmtINR(n){
+    return '₹' + (Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function validateAndNet(){
+    const salary   = num(amtEl.value);        // base salary
+    const mobile   = num(mobileEl.value);     // add-on
+    const withdraw = num(deduct.value);       // minus
+    const gross    = salary + mobile;
+    const net      = gross - withdraw;
+
+    // Show net preview
+    // if (netHint) {
+    //   netHint.textContent = `Net payable: ${fmtINR(net)} = ${fmtINR(salary)} + ${fmtINR(mobile)} − ${fmtINR(withdraw)}`;
+    // }
+
+    // Validate: withdrawal cannot exceed gross
+    if (withdraw > gross) {
+      deduct.classList.add('is-invalid');
+      if (withdrawErr) withdrawErr.textContent =
+        `Withdrawal (${fmtINR(withdraw)}) cannot exceed gross (${fmtINR(gross)}).`;
+      if (submitBtn) submitBtn.disabled = true;
+      return false;
+    } else {
+      deduct.classList.remove('is-invalid');
+      if (withdrawErr) withdrawErr.textContent = '';
+      if (submitBtn) submitBtn.disabled = false;
+      return true;
+    }
+  }
+
+  // Re-validate whenever these fields change
+  [amtEl, mobileEl, deduct].forEach(el => {
+    el.addEventListener('input', validateAndNet);
+  });
+
+  // After your quote() fills values, also validate:
+  const _quote = quote;
+  quote = async function(){ await _quote(); validateAndNet(); }
+
+  // Block submit if invalid
+  form.addEventListener('submit', (e) => { if (!validateAndNet()) e.preventDefault(); });
+
 
   fromEl.addEventListener('input', () => { fromAuto = false; });
 

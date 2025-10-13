@@ -95,12 +95,35 @@ class LedgerService
      * Core appender with running balance (uses SELECT ... FOR UPDATE).
      * Accepts nullable id and normalizes to 0 to avoid type errors.
      */
-    protected function append(?int $customerId, array $payload): DailyOrderLedger
-    {
-        $customerId = (int) ($customerId ?? 0); // ✅ normalize once
 
-        return DB::transaction(function () use ($customerId, $payload) {
-            // Lock the last row for this customer to compute a safe running balance
+protected function append(?int $customerId, array $payload): DailyOrderLedger
+{
+    $customerId = (int) ($customerId ?? 0);
+
+    return DB::transaction(function () use ($customerId, $payload) {
+        $orderId = (int) ($payload['daily_order_id'] ?? 0);
+
+        $debit  = (float) ($payload['debit_bl']  ?? 0);
+        $credit = (float) ($payload['credit_bl'] ?? 0);
+
+        // ---------- PER-ORDER CLOSING (customer_id + daily_order_id) ----------
+        if ($orderId > 0) {
+            // Lock all existing rows for this (customer, order) to build a safe running balance
+            $sum = DailyOrderLedger::query()
+                ->where('customer_id', $customerId)
+                ->where('daily_order_id', $orderId)
+                ->where('isDelete', 0)
+                ->where('iStatus', 1)
+                ->lockForUpdate()
+                ->selectRaw('COALESCE(SUM(debit_bl),0) AS deb, COALESCE(SUM(credit_bl),0) AS cred')
+                ->first();
+
+            $prevOrderBal = ((float)$sum->deb - (float)$sum->cred);
+            // New closing for THIS order; clamp tiny negatives to 0 (fully paid)
+            $closing = max(0, round($prevOrderBal + $debit - $credit, 2));
+        }
+        // ---------- FALLBACK: CUSTOMER-LEVEL CLOSING (no order_id given) ----------
+        else {
             $last = DailyOrderLedger::where('customer_id', $customerId)
                 ->orderByDesc('entry_date')
                 ->orderByDesc('ledger_id')
@@ -108,20 +131,17 @@ class LedgerService
                 ->first();
 
             $prevClosing = $last ? (float) $last->closing_bl : 0.0;
+            $closing = round($prevClosing + $debit - $credit, 2);
+        }
 
-            $debit  = (float) ($payload['debit_bl']  ?? 0);
-            $credit = (float) ($payload['credit_bl'] ?? 0);
+        $row = new DailyOrderLedger(array_merge($payload, [
+            'customer_id' => $customerId,
+            'closing_bl'  => number_format($closing, 2, '.', ''),
+        ]));
 
-            $closing = $prevClosing + $debit - $credit;
+        $row->save();
+        return $row;
+    });
+}
 
-            $row = new DailyOrderLedger(array_merge($payload, [
-                'customer_id' => $customerId,
-                'closing_bl'  => number_format($closing, 2, '.', ''),
-            ]));
-
-            $row->save();
-
-            return $row;
-        });
-    }
 }

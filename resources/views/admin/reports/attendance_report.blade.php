@@ -33,7 +33,9 @@
                 <tr>
                   <th>Employee</th>
                   <th>Daily Wages (₹)</th>
-                  <th>Present Days</th>
+                  <th>Total Present Days</th>
+                  <th>Full Days</th>
+                  <th>Half Days</th>
                   <th>Absent</th>
                   <th>Payment (₹)</th>
                 </tr>
@@ -54,8 +56,14 @@
                   <!-- <td>{{ $row->employee_name }}</td> -->
                   <td>{{ number_format($row->daily_wages, 2) }}</td>
                   <td><span class="badge bg-success">{{ $row->present_days }}</span></td>
+                  <td><span class="badge bg-success">{{ $row->full_days }}</span></td>
+                  <td><span class="badge bg-warning">{{ $row->half_days }}</span></td>
                   <td><span class="badge bg-danger">{{ $row->absent_days }}</span></td>
-                  <td><strong class="text-success">₹{{ number_format($row->payment, 2) }}</strong></td>
+                  <td><strong class="text-success">₹{{ number_format($row->payment, 2) }} 
+                  <span class="text-bold text-black"> {{ $row->full_days }}P + {{ $row->half_days }}H =
+{{ rtrim(rtrim(number_format($row->present_days ?? ($row->full_days + $row->half_days * 0.5), 2, '.', ''), '0'), '.') }}
+day(s) × ₹{{ number_format($row->daily_wages, 0) }})
+</span></strong></td>
                 </tr>
                 @empty
                 <tr><td colspan="5" class="text-center text-muted">No records found.</td></tr>
@@ -64,7 +72,7 @@
               @if($summary->count())
               <tfoot>
                 <tr class="table-success">
-                  <th colspan="4" class="text-end">Grand Total</th>
+                  <th colspan="6" class="text-end">Grand Total</th>
                   <th>₹{{ number_format($grandTotal, 2) }}</th>
                 </tr>
               </tfoot>
