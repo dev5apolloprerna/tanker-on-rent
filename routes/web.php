@@ -270,10 +270,11 @@ Route::prefix('daily-orders')->group(function () {
     // Payments against a customer (optional daily_order_id can be passed)
     Route::post('daily-orders/{daily_order}/payment', [DailyOrderController::class, 'receivePayment'])
         ->name('daily-orders.payment');
-/*
-Route::get('/admin/customers/{customer}/payments', [DailyOrderController::class, 'customerPayments'])->name('customers.payments');*/
-Route::get('/admin/daily-orders/{order}/payments/view',[DailyOrderController::class, 'orderPayments'])->name('daily-orders.order-payments');
 
+    /*Route::get('/admin/customers/{customer}/payments', [DailyOrderController::class, 'customerPayments'])
+     ->name('customers.payments');*/
+
+Route::get('/admin/daily-orders/{order}/payments/view',[DailyOrderController::class, 'orderPayments'])->name('daily-orders.order-payments');
 
 });
 
