@@ -275,6 +275,10 @@ Route::prefix('daily-orders')->group(function () {
      ->name('customers.payments');*/
 
 Route::get('/admin/daily-orders/{order}/payments/view',[DailyOrderController::class, 'orderPayments'])->name('daily-orders.order-payments');
+Route::put('/daily-orders/{id}/receive',  [DailyOrderController::class, 'receive'])->name('daily-orders.receive');
+Route::put('/daily-orders/{id}/unreceive',[DailyOrderController::class, 'unreceive'])->name('daily-orders.unreceive');
+
+Route::post('daily-orders/{id}/pay', [DailyOrderController::class, 'pay'])->name('daily-orders.pay');
 
 });
 

@@ -27,6 +27,7 @@ class CollectionReportController extends Controller
             ->where('l.isDelete', 0)
             ->where('l.credit_bl', '>', 0)
             ->whereBetween('l.entry_date', [$from, $to])
+            ->whereNotNull('daily_order_id')
             ->groupBy('l.entry_date');
 
         // ---- Order payments (adjust table/columns if your schema differs) ----
@@ -74,8 +75,7 @@ class CollectionReportController extends Controller
                 l.entry_date     as tx_date,
                 l.created_at     as tx_time,
                 l.daily_order_id as ref_id,
-                c.customer_name  as customer_name,
-                d.service_type   as service
+                c.customer_name  as customer_name
             ");
 
         // Order payments
@@ -92,8 +92,7 @@ class CollectionReportController extends Controller
                 COALESCE(DATE(p.payment_date), DATE(p.created_at)) as tx_date,
                 COALESCE(p.payment_date, p.created_at) as tx_time,
                 p.order_id       as ref_id,
-                c.customer_name  as customer_name,
-                NULL             as service
+                c.customer_name  as customer_name
             ");
 
         $rows = DB::query()->fromSub($dql->unionAll($oql), 'x')
@@ -134,8 +133,7 @@ class CollectionReportController extends Controller
                 l.entry_date     as tx_date,
                 l.created_at     as tx_time,
                 l.daily_order_id as ref_id,
-                c.customer_name  as customer_name,
-                d.service_type   as service
+                c.customer_name  as customer_name
             ");
 
         $dateExpr = DB::raw('COALESCE(DATE(p.payment_date), DATE(p.created_at))');
@@ -153,8 +151,7 @@ class CollectionReportController extends Controller
                 ".$dateExpr." as tx_date,
                 COALESCE(p.payment_date, p.created_at) as tx_time,
                 p.order_id       as ref_id,
-                c.customer_name  as customer_name,
-                NULL             as service
+                c.customer_name  as customer_name
             ");
 
         $rows = DB::query()->fromSub($dql->unionAll($oql), 'x')

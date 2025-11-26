@@ -42,11 +42,14 @@
                     <th>Date</th>
                     <th>Customer</th>
                     <th>Mobile</th>
-                    <th>Service</th>
-                    <th class="text-end">Total (₹)</th>
-                    <th class="text-end">Paid (₹)</th>
-                    <th class="text-end">Unpaid (₹)</th>
-                        <th>Sts</th>
+                    <th>Received</th>
+                    <th class="text-end">Extra Rent</th>
+                    <th class="text-center">Days</th>
+                    <th class="text-end">Total</th>  {{-- total_amount from DB --}}
+                    <!-- <th class="text-end">Grand</th>   {{-- Stored + Extra --}} -->
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Due</th>
+
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -60,19 +63,6 @@
                       <td>{{ $r->daily_order_id }}</td>
                       <td>{{ \Carbon\Carbon::parse($r->rent_date)->format('d-m-Y') }}</td>
                       <td>
-                      <!-- @if((int)$r->customer_id === 0)
-                      {{ $r->customer_name }}
-                        <span class="badge bg-info ms-1">Retail</span>
-                      @else
-                      <button type="button"
-                              class="btn btn-link p-0 js-cust-payments"
-                              data-customer-id="{{ (int)$r->customer_id }}"
-                              data-customer-name="{{ $r->customer_name }}">
-                        {{ $r->customer_name }}
-                      </button>
-                        <span class="badge bg-secondary ms-1">Recurring</span>
-                      @endif -->
-
                       @if((int)$r->customer_id === 0)
                       {{ $r->customer_name }}
                         <span class="badge bg-info ms-1">Retail</span>
@@ -90,24 +80,42 @@
                       @endif
                     </td>
 
-                      <!-- <td>
-                        {{ $r->customer_name }}
-                        @if((int)$r->customer_id === 0)
-                          <span class="badge bg-info ms-1">Retail</span>
-                        @else
-                          <span class="badge bg-secondary ms-1">Recurring</span>
-                        @endif
-                      </td> -->
                       <td>{{ $r->mobile }}</td>
-                      <td>{{ $r->service_type }}</td>
-                      <td class="text-end">₹{{ number_format((float)$r->total_amount, 2) }}</td>
-                      <td class="text-end">₹{{ number_format($paid, 2) }}</td>
-                      <td class="text-end {{ $due > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
-                        ₹{{ number_format($due, 2) }}
+                     <td>
+                        @if($r->received_at)
+                          {{ \Carbon\Carbon::parse($r->received_at)->format('d-M-Y') }}
+                        @else
+                          <span class="badge bg-warning text-dark">Not Received</span>
+                        @endif
                       </td>
 
-                      <td>@if($r->iStatus) <span class="badge bg-success">Active</span> @else <span class="badge bg-secondary">Inactive</span> @endif</td>
-                      <td>
+                        <td class="text-end">₹{{ number_format($r->calc_extra, 2) }}</td>
+                       <td class="text-center small text-muted">({{ $r->calc_days }} days)</td>
+                        <!-- <td class="text-end">₹{{ number_format($r->calc_stored, 2) }}</td> -->
+                        <td class="text-end fw-semibold">₹{{ number_format($r->calc_grand, 2) }}</td>
+                        <td class="text-end">₹{{ number_format($r->calc_paid, 2) }}</td>
+                        <td class="text-end">₹{{ number_format($r->calc_due, 2) }}</td>
+                        <td>
+                      @php
+                          $placedDate = date('Y-m-d',strtotime($r->rent_date)); // fallback to rent_date
+                      @endphp
+                      @if(empty($r->received_at))
+                          {{-- Not received → open modal --}}
+                          <button type="button"
+                                  class="btn btn-sm btn-success btn-open-receive"
+                                  data-id="{{ $r->daily_order_id }}"
+                                  data-placed="{{ $placedDate }}"
+                                  data-rate="200"
+                                  data-customer="{{ $r->customer_name }}">
+                            Mark Received
+                          </button>
+                        @else
+                          {{-- Already received → allow undo --}}
+                          <form method="POST" action="{{ route('daily-orders.unreceive', $r->daily_order_id) }}" class="d-inline">
+                            @csrf @method('PUT')
+                            <button class="btn btn-sm btn-warning">Mark Not Received</button>
+                          </form>
+                        @endif
                        <a href="{{ route('daily-orders.edit', $r->daily_order_id) }}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-edit"></i>
                                             </a>
@@ -116,6 +124,7 @@
                           @csrf @method('DELETE')
                           <button class="btn btn-sm btn-danger"><i class="fas fa-trash-alt"></i></button>
                         </form>
+                        @if(!empty($r->received_at))
                         <button
                             type="button" title="Pay"
                             class="btn btn-sm btn-success btnPay"
@@ -124,29 +133,39 @@
                             data-order-id="{{ $r->daily_order_id }}"
                             data-customer-id="{{ $r->customer_id }}"
                             data-customer-name="{{ $r->customer_name }}"
-                            data-total-amount="{{ $r->total_amount }}"
-                            data-paid="{{ $paid }}"
-                            data-due="{{ $due }}"
+                            data-total-amount="{{ $r->calc_grand }}"
+                            data-paid="{{ $r->calc_paid }}"
+                            data-due="{{ $r->calc_due }}"
 
                             data-order-date="{{ \Carbon\Carbon::parse($r->rent_date)->format('Y-m-d') }}"
                           ><i class="fas fa-inr"></i></button>
+                          @endif
+
                       </td>
+                      
+
+
                     </tr>
                   @empty
                     <tr><td colspan="8" class="text-center text-muted">No records</td></tr>
                   @endforelse
                 </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="5" class="text-end fw-semibold">Page Totals:</td>
-                    <td class="text-end fw-semibold">₹{{ number_format($page_total_amount, 2) }}</td>
-                    <td class="text-end fw-semibold">₹{{ number_format($page_total_paid, 2) }}</td>
-                    <td class="text-end fw-semibold {{ $page_total_due > 0 ? 'text-danger' : 'text-success' }}">
-                      ₹{{ number_format($page_total_due, 2) }}
-                    </td>
-                    <td colspan="2"></td>
-                  </tr>
-                </tfoot>
+                    @if($rows->count())
+                    <tfoot>
+                      <tr class="fw-semibold">
+                        <td colspan="5" class="text-end">Totals:</td>
+                        <td class="text-center">{{ $totals['days'] }}</td>
+                        <td class="text-end">₹{{ number_format($totals['extra'], 2) }}</td>
+                        <!-- <td class="text-end">₹{{ number_format($totals['stored'], 2) }}</td> -->
+                        <td class="text-end">₹{{ number_format($totals['grand'], 2) }}</td>
+                        <td class="text-end">₹{{ number_format($totals['paid'], 2) }}</td>
+                        <td class="text-end">₹{{ number_format($totals['due'], 2) }}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                    @endif
+
+
               </table>
 
               <div class="mt-2">{{ $rows->links() }}</div>
@@ -220,6 +239,55 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
+{{-- Receive Modal --}}
+<div class="modal fade" id="receiveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" id="receiveForm" class="modal-content">
+      @csrf @method('PUT')
+
+      <div class="modal-header">
+        <h5 class="modal-title">Mark Received</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        {{-- Context --}}
+        <div class="mb-2 small text-muted" id="receiveContext"></div>
+
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label">Placed Date</label>
+            <input type="date" class="form-control" id="placedDate" readonly>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Received Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" name="received_date" id="receivedDate" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Rate / Day (₹) <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" name="rate" id="ratePerDay" min="1" step="1" value="{{ $rate }}" readonly>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Days (auto)</label>
+            <input type="text" class="form-control" id="calcDays" readonly>
+          </div>
+
+          <div class="col-12">
+            <div class="alert alert-info py-2 mb-0" id="calcTotal">Total: ₹0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-success" type="submit">Save</button>
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -357,5 +425,78 @@
 })();
 
 </script>
+<script>
+(function(){
+  const modalEl   = document.getElementById('receiveModal');
+  const formEl    = document.getElementById('receiveForm');
+  const ctxEl     = document.getElementById('receiveContext');
+  const placedEl  = document.getElementById('placedDate');
+  const recvEl    = document.getElementById('receivedDate');
+  const rateEl    = document.getElementById('ratePerDay');
+  const daysEl    = document.getElementById('calcDays');
+  const totalEl   = document.getElementById('calcTotal');
+
+  const bsModal   = new bootstrap.Modal(modalEl);
+
+  // Build action URL with id
+  const receiveUrlTpl = @json(route('daily-orders.receive', ':id'));
+
+  // Utilities
+  function ymd(d){ return d.toISOString().slice(0,10); } // YYYY-MM-DD
+  function parseYMD(s){
+    // Parse YYYY-MM-DD as UTC midnight to avoid TZ off-by-one
+    const [y,m,d] = (s||'').split('-').map(Number);
+    if(!y||!m||!d) return null;
+    return new Date(Date.UTC(y, m-1, d));
+  }
+  function diffDays(a,b){ // b - a, NOT inclusive (25->27 = 2)
+    const ms = (b - a);
+    return ms < 0 ? 0 : Math.floor(ms / 86400000);
+  }
+  function fmtCurrency(n){
+    try { return '₹' + (Number(n)||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    catch { return '₹' + (Number(n)||0).toFixed(2); }
+  }
+  function recompute(){
+    const placed = parseYMD(placedEl.value);
+    const recv   = parseYMD(recvEl.value);
+    const rate   = Number(rateEl.value||0);
+    if(!placed || !recv || !rate){ daysEl.value = ''; totalEl.textContent=''; return; }
+    const days   = diffDays(placed, recv);      // NOT inclusive
+    const total  = days * rate;
+    daysEl.value = String(days);
+    totalEl.textContent = `Total: ${fmtCurrency(total)} (Days: ${days} × Rate: ${fmtCurrency(rate)})`;
+  }
+
+  // Open modal on button click
+  document.querySelectorAll('.btn-open-receive').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id       = btn.dataset.id;
+      const placed   = btn.dataset.placed || '';
+      const rate     = Number(btn.dataset.rate || 200);
+      const customer = btn.dataset.customer || '';
+
+      // Fill fields
+      placedEl.value = placed;
+      recvEl.value   = @json(now()->toDateString());
+      rateEl.value   = rate;
+      ctxEl.textContent = customer ? `Customer: ${customer} (Order #${id})` : `Order #${id}`;
+
+      // Update form action
+      formEl.action = receiveUrlTpl.replace(':id', id);
+
+      // Initial compute
+      recompute();
+
+      // Show modal
+      bsModal.show();
+    });
+  });
+
+  // Live recompute
+  [recvEl, rateEl].forEach(el => el.addEventListener('input', recompute));
+})();
+</script>
 @endsection
+
 
