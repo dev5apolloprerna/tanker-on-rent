@@ -22,7 +22,7 @@ class DailyOrderController extends Controller
     public function __construct(private LedgerService $ledger) {}
 
     public function index()
-        {
+    {
             $rows = DailyOrder::where('isDelete', 0)
                 ->orderByDesc('daily_order_id')
                 ->paginate(20);
@@ -94,37 +94,37 @@ class DailyOrderController extends Controller
 
             return view('admin.daily_orders.index', compact('rows', 'rate', 'totals'));
         }
-        /*public function index(Request $request)
-        {
-            $customers = Customer::select('customer_id','customer_name','customer_mobile')
-                ->orderBy('customer_name')
-                ->get();
+    /*public function index(Request $request)
+    {
+        $customers = Customer::select('customer_id','customer_name','customer_mobile')
+            ->orderBy('customer_name')
+            ->get();
 
-            // Add a subquery "paid_sum" = sum of credits tied to this order
-            $rows = DailyOrder::query()
-                ->where('isDelete', 0)
-                ->select('daily_order.*')
-                ->selectSub(function($q){
-                    $q->from('daily_order_ledger as l')
-                      ->selectRaw('COALESCE(SUM(l.credit_bl),0)')
-                      ->whereColumn('l.daily_order_id','daily_order.daily_order_id')
-                      ->where('l.isDelete', 0)
-                      ->where('l.iStatus', 1);
-                }, 'paid_sum')
-                ->orderByDesc('daily_order_id')
-                ->paginate(12);
+        // Add a subquery "paid_sum" = sum of credits tied to this order
+        $rows = DailyOrder::query()
+            ->where('isDelete', 0)
+            ->select('daily_order.*')
+            ->selectSub(function($q){
+                $q->from('daily_order_ledger as l')
+                  ->selectRaw('COALESCE(SUM(l.credit_bl),0)')
+                  ->whereColumn('l.daily_order_id','daily_order.daily_order_id')
+                  ->where('l.isDelete', 0)
+                  ->where('l.iStatus', 1);
+            }, 'paid_sum')
+            ->orderByDesc('daily_order_id')
+            ->paginate(12);
 
-            // Page totals (for the rows shown on current page)
-            $coll = $rows->getCollection();
-            $page_total_amount = (float) $coll->sum('total_amount');
-            $page_total_paid   = (float) $coll->sum('paid_sum');
-            $page_total_due    = $page_total_amount - $page_total_paid;
+        // Page totals (for the rows shown on current page)
+        $coll = $rows->getCollection();
+        $page_total_amount = (float) $coll->sum('total_amount');
+        $page_total_paid   = (float) $coll->sum('paid_sum');
+        $page_total_due    = $page_total_amount - $page_total_paid;
 
-            return view('admin.daily_orders.index', compact(
-                'customers', 'rows',
-                'page_total_amount', 'page_total_paid', 'page_total_due'
-            ));
-        }*/
+        return view('admin.daily_orders.index', compact(
+            'customers', 'rows',
+            'page_total_amount', 'page_total_paid', 'page_total_due'
+        ));
+    }*/
 
     public function create() {
         $customers = Customer::orderBy('customer_name')->get(['customer_id','customer_name','customer_mobile']);
