@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyOrder;
 use App\Models\DailyOrderLedger;
 use App\Models\Customer;
+use App\Models\RentPrice;
 use App\Services\LedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -20,8 +21,80 @@ class DailyOrderController extends Controller
 
     public function __construct(private LedgerService $ledger) {}
 
+    public function index()
+        {
+            $rows = DailyOrder::where('isDelete', 0)
+                ->orderByDesc('daily_order_id')
+                ->paginate(20);
+            
+            $dailyrate=RentPrice::select('amount')->where(['rent_type'=>'Daily'])->first();
+            $rate = $dailyrate->amount; // ₹/day default
 
-        public function index(Request $request)
+            // running totals for footer
+            $totals = [
+                'days'   => 0,
+                'base'   => 0.0,
+                'extra'  => 0.0,
+                'stored' => 0.0,   // total_amount from DB
+                'grand'  => 0.0,   // stored + extra
+                'paid'   => 0.0,
+                'due'    => 0.0,
+            ];
+
+            $rows->getCollection()->transform(function ($r) use (&$totals, $rate) 
+            {
+                // dates
+                $placed   = $r->rent_date; // start
+                $received = $r->received_at;                   // end (if received)
+
+                $start = $placed   ? Carbon::parse($placed)->startOfDay()   : null;
+                $end   = $received ? Carbon::parse($received)->startOfDay() : now()->startOfDay();
+
+                // NOT inclusive: 25->27 = 2
+                $days  = $start ? max(0, $start->diffInDays($end)) : 0;
+
+                // base/extra/total (base = first day)
+                $base  = $days >= 1 ? $rate : 0;
+                $extra = max(0, $days - 1) * $rate;
+
+                // stored total from DB (may be 0/null)
+                $stored = (float) ($r->total_amount ?? 0);
+
+                // grand = stored total + runtime extra
+                $grand = round($stored + $extra, 2);
+
+                // paid from ledger (credits)
+                $paid = (float) DailyOrderLedger::where('daily_order_id', $r->daily_order_id)
+                            ->where('iStatus', 1)->where('isDelete', 0)
+                            ->sum('credit_bl');
+
+                // due against GRAND (as requested)
+                $due = max(0, $grand - $paid);
+
+                // attach for blade
+                $r->calc_days   = $days;
+                $r->calc_base   = round($base, 2);
+                $r->calc_extra  = round($extra, 2);
+                $r->calc_stored = round($stored, 2);
+                $r->calc_grand  = round($grand, 2);
+                $r->calc_paid   = round($paid, 2);
+                $r->calc_due    = round($due, 2);
+
+                // accumulate totals
+                $totals['days']   += $days;
+                $totals['base']   += $r->calc_base;
+                $totals['extra']  += $r->calc_extra;
+                $totals['stored'] += $r->calc_stored;
+                $totals['grand']  += $r->calc_grand;
+                $totals['paid']   += $r->calc_paid;
+                $totals['due']    += $r->calc_due;
+
+                return $r;
+            });
+
+            return view('admin.daily_orders.index', compact('rows', 'rate', 'totals'));
+        }
+        /*public function index(Request $request)
         {
             $customers = Customer::select('customer_id','customer_name','customer_mobile')
                 ->orderBy('customer_name')
@@ -51,7 +124,7 @@ class DailyOrderController extends Controller
                 'customers', 'rows',
                 'page_total_amount', 'page_total_paid', 'page_total_due'
             ));
-        }
+        }*/
 
     public function create() {
         $customers = Customer::orderBy('customer_name')->get(['customer_id','customer_name','customer_mobile']);
@@ -268,68 +341,57 @@ class DailyOrderController extends Controller
 
         return $request->validate($rules, $messages);
     }
-    public function customerPayments(Request $request, int $customer)
+        public function receive(Request $request, int $id)
     {
-        // Default: current month
-        $from = $request->filled('from')
-            ? Carbon::parse($request->get('from'))->startOfDay()
-            : now()->startOfMonth();
-        $to   = $request->filled('to')
-            ? Carbon::parse($request->get('to'))->endOfDay()
-            : now()->endOfDay();
+        $order = DailyOrder::where('isDelete', 0)->findOrFail($id);
 
-        // Customer label (fallback for retail)
-        $customerName = DB::table('daily_order')
-            ->where('customer_id', $customer)
-            ->where('isDelete', 0)
-            ->orderByDesc('daily_order_id')
-            ->value('customer_name') ?? ($customer == 0 ? 'Retail' : 'Customer '.$customer);
+        // Resolve dates
+        $placed = $order->rent_date;
+        if (!$placed) {
+            return back()->with('error', 'Placed date is missing; cannot compute days.');
+        }
 
-            // Only payments that belong to an order (daily_order_id IS NOT NULL)
-            $payments = DB::table('daily_order_ledger as l')
-                ->join('daily_order as o', 'o.daily_order_id', '=', 'l.daily_order_id')
-                ->where('l.customer_id', $customer)
-                ->whereNotNull('l.daily_order_id')
-                ->where('l.isDelete', 0)
-                ->where('l.iStatus', 1)
-                ->where('l.credit_bl', '>', 0) // payments only
-                ->whereBetween('l.entry_date', [$from->toDateString(), $to->toDateString()])
-                ->orderByDesc('l.entry_date')
-                ->orderByDesc('l.ledger_id')
-                ->select([
-                    'l.ledger_id',
-                    'l.entry_date',
-                    'l.comment',
-                    'l.credit_bl',
-                    'l.closing_bl',
-                    'l.daily_order_id',
-                    'o.rent_date',
-                    'o.total_amount',
-                ])
-                ->get();
+        $placedAt   = Carbon::parse($placed)->startOfDay();
+        $receivedAt = $request->filled('received_date')
+                        ? Carbon::parse($request->input('received_date'))->startOfDay()
+                        : now()->startOfDay();
 
-            // All-time paid per order (to show accurate due)
-            $orderPaidAll = DB::table('daily_order_ledger')
-                ->where('customer_id', $customer)
-                ->whereNotNull('daily_order_id')
-                ->where('isDelete', 0)
-                ->where('iStatus', 1)
-                ->groupBy('daily_order_id')
-                ->pluck(DB::raw('SUM(credit_bl)'), 'daily_order_id'); // payments sum
+        // Rate (default 200)
+        $rate  = (float) ($request->input('rate', 200));
+        if ($rate <= 0) $rate = 200;
 
-            $totalPaidInRange = $payments->sum('credit_bl');
+        // Compute days & amount (25 -> 27 = 2 days)
+        $days   = max(0, $placedAt->diffInDays($receivedAt));
+        $amount = $days * $rate;
 
-            return view('admin.daily_orders._payments', [
-                'customerId'       => $customer,
-                'customerName'     => $customerName,
-                'from'             => $from->toDateString(),
-                'to'               => $to->toDateString(),
-                'rows'             => $payments,
-                'orderPaidAll'     => $orderPaidAll,     // map[orderId] => paid total
-                'totalPaid'        => $totalPaidInRange, // range summary
-            ]);
+        // Persist as "received"
+        $order->received_at = $receivedAt->toDateString();    // using empty_the_tanker as the "received" date
+        $order->extra_amount     = $amount;                         // store computed total
+        $order->extra_duration     = $days;                         // store computed total
+        $order->save();
 
+        // Optional: if you maintain a ledger, you could append/adjust here.
+        // app(LedgerService::class)->addCreditPayment($order->customer_id, $amount, 'Daily Order received', $receivedAt->toDateString(), $order->daily_order_id);
+
+        return back()->with('success', "Tanker marked received. Days: {$days}, Rate: ₹{$rate}, Total: ₹{$amount}");
     }
 
+    /**
+     * Mark tanker as NOT received (clear received date & reset computed amount).
+     */
+    public function unreceive(int $id)
+    {
+        $order = DailyOrder::where('isDelete', 0)->findOrFail($id);
+
+        $order->received_at = null;
+        // If you want to keep any manual total, remove next line.
+        $order->extra_amount = 0;
+        $order->extra_duration = 0;
+        $order->save();
+
+        return back()->with('success', 'Tanker marked as not received.');
+    }
+
+   
 
 }

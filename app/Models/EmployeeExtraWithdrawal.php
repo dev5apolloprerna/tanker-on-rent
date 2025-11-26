@@ -18,7 +18,7 @@ class EmployeeExtraWithdrawal extends Model
         'reason',
         'emi_amount',
         'remaining_amount',
-        'remarks',
+        'isActive',
     ];
 
     public function employee()

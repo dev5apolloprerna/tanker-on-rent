@@ -28,4 +28,8 @@ class DailyOrderLedger extends Model
         'closing_bl' => 'decimal:2',
         'entry_date' => 'date',
     ];
+    public function order()
+    {
+        return $this->belongsTo(DailyOrder::class, 'daily_order_id', 'daily_order_id');
+    }
 }

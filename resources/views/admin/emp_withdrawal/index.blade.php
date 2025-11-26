@@ -144,60 +144,70 @@
 
       {{-- Edit Modal --}}
       <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-          <div class="modal-content">
-            <form id="editForm" method="POST">
-              @csrf
-              <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Edit Withdrawal</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body">
-                <input type="hidden" id="edit_id">
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label>Employee</label>
-                    <select id="edit_emp" class="form-select" required>
-                      <option value="">Select Employee</option>
-                      @foreach($employees as $emp)
-                        <option value="{{ $emp->emp_id }}">{{ $emp->name }}</option>
-                      @endforeach
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label>Date</label>
-                    <input type="date" id="edit_date" class="form-control">
-                  </div>
-                  <div class="col-md-4">
-                    <label>Amount</label>
-                    <input type="number" step="0.01" id="edit_amount" class="form-control">
-                  </div>
-                  <div class="col-md-4">
-                    <label>EMI Amount</label>
-                    <input type="number" id="edit_emi" class="form-control">
-                  </div>
-                  <!-- <div class="col-md-4">
-                    <label>Remaining</label>
-                    <input type="number" id="edit_remaining" class="form-control">
-                  </div> -->
-                  <div class="col-md-12">
-                    <label>Reason</label>
-                    <input type="text" id="edit_reason" class="form-control">
-                  </div>
-                  <div class="col-md-12">
-                    <label>Remarks</label>
-                    <textarea id="edit_remarks" class="form-control" rows="2"></textarea>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-success">Update</button>
-              </div>
-            </form>
-          </div>
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editForm" method="POST">
+        @csrf
+        @method("POST") <!-- Or PUT if your route uses PUT -->
+
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">Edit Withdrawal</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-      </div>
+
+        <div class="modal-body">
+
+          <input type="hidden" id="edit_id" name="withdrawal_id">
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label>Employee</label>
+              <select id="edit_emp" name="emp_id" class="form-select" required>
+                <option value="">Select Employee</option>
+                @foreach($employees as $emp)
+                  <option value="{{ $emp->emp_id }}">{{ $emp->name }}</option>
+                @endforeach
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label>Date</label>
+              <input type="date" id="edit_date" name="withdrawal_date" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+              <label>Amount</label>
+              <input type="number" id="edit_amount" name="amount" step="0.01" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+              <label>EMI Amount</label>
+              <input type="number" id="edit_emi" name="emi_amount" class="form-control">
+            </div>
+
+            <div class="col-md-12">
+              <label>Reason</label>
+              <input type="text" id="edit_reason" name="reason" class="form-control">
+            </div>
+
+            <div class="col-md-12">
+              <label>Remarks</label>
+              <textarea id="edit_remarks" name="remarks" class="form-control" rows="2"></textarea>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Update</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
 
     </div>
   </div>
@@ -228,19 +238,21 @@ document.getElementById('checkAll').addEventListener('change', e => {
 
 document.querySelectorAll('.editBtn').forEach(btn => {
   btn.addEventListener('click', function() {
+
     document.getElementById('edit_id').value = this.dataset.id;
     document.getElementById('edit_emp').value = this.dataset.emp;
     document.getElementById('edit_date').value = this.dataset.date;
     document.getElementById('edit_amount').value = this.dataset.amount;
     document.getElementById('edit_reason').value = this.dataset.reason;
     document.getElementById('edit_emi').value = this.dataset.emi;
-    // document.getElementById('edit_remaining').value = this.dataset.remaining;
     document.getElementById('edit_remarks').value = this.dataset.remarks;
-    document.getElementById('editForm').action = `/admin/employee-extra-withdrawal/update/${this.dataset.id}`;
+
+    document.getElementById('editForm').action =
+      `../admin/employee-extra-withdrawal/update/${this.dataset.id}`;
+
     new bootstrap.Modal(document.getElementById('editModal')).show();
   });
 });
-
 document.addEventListener('DOMContentLoaded', function () {
   const modalEl   = document.getElementById('empDetailModal');
   const modalBody = document.getElementById('empDetailBody');

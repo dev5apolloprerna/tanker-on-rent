@@ -12,9 +12,7 @@ class DailyOrder extends Model
     protected $keyType = 'int';
 
         protected $fillable = [
-          'customer_id','customer_name','mobile','location','rent_date',
-          'placed_the_tanker','empty_the_tanker','filled_the_tanker',
-          'total_amount','isPaid','iStatus'
+          'customer_id', 'customer_name', 'mobile', 'location', 'rent_date', 'placed_the_tanker', 'empty_the_tanker', 'filled_the_tanker', 'extra_amount', 'total_amount','isPaid','iStatus'
         ];
 
 
