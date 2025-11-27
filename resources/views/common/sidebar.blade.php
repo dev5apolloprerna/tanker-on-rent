@@ -154,17 +154,52 @@ $roleid = Auth::guard('web_employees')->user()->role_id;
                               </a>
                             </li>
                              <li class="nav-item">
-                                  <a class="nav-link {{ request()->is('reports.collection','reports.collection.*') ? 'active' : '' }}"
-                                     href="{{ route('reports.collection') }}">
-                                    <i class="fa fa-wallet me-2"></i> Payment Collection Report (ચુકવણી સંગ્રહ અહેવાલ)
-                                  </a>
-                                </li>
+                              <a class="nav-link {{ request()->is('reports.collection','reports.collection.*') ? 'active' : '' }}"
+                                 href="{{ route('reports.collection') }}">
+                                <i class="fa fa-wallet me-2"></i> Payment Collection Report (ચુકવણી સંગ્રહ અહેવાલ)
+                              </a>
+                            </li>
 
 
                         </ul>
                     </div>
                 </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#sidebarMore" data-bs-toggle="collapse" role="button"
+                            aria-expanded="true" aria-controls="sidebarMore">
+                            <i class="fa fa-list text-white"></i>Iscon (ઇસ્કોન)</a>
+                        <div class="menu-dropdown collapse show" id="sidebarMore" style="">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item">
+                                    <a href="{{ route('truck.index') }}" class="nav-link {{ request()->is('admin/truck*') ? 'active' : '' }}">
+                                        <i class="nav-icon fas fa-truck"></i>
+                                        Truck Master (ટ્રક માસ્ટર)
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('driver.index') }}" class="nav-link {{ request()->is('admin/driver*') ? 'active' : '' }}">
+                                        <i class="nav-icon fa fa-id-card"></i>
+                                        Driver Master (ડ્રાઈવર માસ્ટર)
+                                    </a>
+                                </li>   
+                                  <li class="nav-item">
+                                  <a href="{{ route('admin.iscon-daily-expences.index') }}"
+                                     class="nav-link {{ request()->routeIs('admin.iscon-daily-expences.*') ? 'active' : '' }}">
+                                    <i class="fas fa-receipt me-2"></i>
+                                    <span>Daily Expenses (દૈનિક ખર્ચ)</span>
+                                  </a>
+                                </li>    
+                                <li class="nav-item">
+                                <a href="{{ route('trip.index') }}" class="nav-link {{ request()->routeIs('admin.trip.*') ? 'active' : '' }}">
+                                    <i class="fas fa-route"></i>
+                                    <span>Trip Master (ટ્રીપ માસ્ટર)</span>
+                                </a>
+                            </li>
+                        
 
+                            </ul>
+                        </div>
+                    </li>
 
                 @endif
             </ul>

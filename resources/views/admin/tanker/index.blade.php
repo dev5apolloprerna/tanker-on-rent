@@ -6,71 +6,80 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
+
             @include('common.alert')
+
             <div class="row">
+
+                {{-- LEFT SIDE FORM --}}
                 <div class="col-md-4">
-                    <div class="card">
+                    <div class="card shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">Add Tanker</h5>
+
                             <form method="POST" action="{{ route('tanker.store') }}">
                                 @csrf
-                                 <div class="mb-3">
-                                    <label class="form-label">Godown<span style="color:red;">*</span></label>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Godown<span class="text-danger">*</span></label>
                                     <select name="godown_id" class="form-control">
                                         <option value="">Select Godown</option>
-                                        @foreach($godown as $gdn)
-                                            <option value="{{ $gdn->godown_id }}" {{ old('godown_id') == $gdn->godown_id ? 'selected' : '' }}>{{ $gdn->Name }}</option>
+                                        @foreach($godown as $g)
+                                            <option value="{{ $g->godown_id }}">{{ $g->Name }}</option>
                                         @endforeach
-                                        </select>
-                                    @if($errors->has('tanker_name'))
-                                        <span class="text-danger">{{ $errors->first('godown_id') }}</span>
-                                    @endif
+                                    </select>
                                 </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label">Tanker Name <span style="color:red;">*</span></label>
-                                    <input type="text" name="tanker_name" class="form-control" value="{{ old('tanker_name') }}">
-                                    @if($errors->has('tanker_name'))
-                                        <span class="text-danger">{{ $errors->first('tanker_name') }}</span>
-                                    @endif
+                                    <label class="form-label">Tanker Name<span class="text-danger">*</span></label>
+                                    <input type="text" name="tanker_name" class="form-control">
                                 </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label">Tanker Code <span style="color:red;">*</span></label>
-                                    <input type="text" name="tanker_code" class="form-control" value="{{ old('tanker_code') }}">
-                                    @if($errors->has('tanker_code'))
-                                        <span class="text-danger">{{ $errors->first('tanker_code') }}</span>
-                                    @endif
+                                    <label class="form-label">Tanker Code<span class="text-danger">*</span></label>
+                                    <input type="text" name="tanker_code" class="form-control">
                                 </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label">Status <span style="color:red;">*</span></label>
+                                    <label class="form-label">Status</label>
                                     <select name="status" class="form-control">
                                         <option value="0">Inside</option>
                                         <option value="1">Outside</option>
                                     </select>
-                                    @if($errors->has('status'))
-                                        <span class="text-danger">{{ $errors->first('status') }}</span>
-                                    @endif
                                 </div>
-                                <button type="submit" class="btn btn-success">Submit</button>
-                                <button type="reset" class="btn btn-light">Clear</button>
+
+                                <button class="btn btn-success">Submit</button>
+                                <button class="btn btn-light" type="reset">Clear</button>
                             </form>
+
                         </div>
                     </div>
                 </div>
 
+                {{-- RIGHT SIDE TABLE --}}
                 <div class="col-md-8">
-                    <form id="bulkDeleteForm" method="POST" action="{{ route('tanker.bulkDelete') }}">
-                        @csrf
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Tanker List</h5>
-                                <div class="d-flex">
-                                    <input type="text" name="tanker_name" class="form-control me-2" placeholder="Tanker Name" value="{{ request('tanker_name') }}">
-                                    <input type="text" name="tanker_code" class="form-control me-2" placeholder="Tanker Code" value="{{ request('tanker_code') }}">
-                                    <button type="submit" class="btn btn-primary">Search</button>
-                                </div>
+
+                    {{-- SEARCH FORM ONLY --}}
+                    <form method="GET" action="{{ route('tanker.index') }}">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Tanker List</h5>
+
+                            <div class="d-flex">
+                                <input type="text" name="tanker_name" value="{{ request('tanker_name') }}" class="form-control me-2" placeholder="Tanker Name">
+                                <input type="text" name="tanker_code" value="{{ request('tanker_code') }}" class="form-control me-2" placeholder="Tanker Code">
+                                <button class="btn btn-primary">Search</button>
                             </div>
-                            <div class="card-body table-responsive">
-                                <button type="submit" class="btn btn-danger btn-sm mb-2" onclick="return confirm('Delete selected?')"> <i class="far fa-trash-alt"></i> Bulk Delete</button>
+                        </div>
+                    </form>
+
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+
+                            <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm mb-2">
+                                <i class="far fa-trash-alt"></i> Bulk Delete
+                            </button>
+
+                            <div class="table-responsive">
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
@@ -79,95 +88,133 @@
                                             <th>Name</th>
                                             <th>Code</th>
                                             <th>Status</th>
-                                            <th>Created On</th>
+                                            <th>Created</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
+
                                     <tbody>
-                                        @foreach($tankers as $tanker)
-                                            <tr>
-                                                <td><input type="checkbox" name="ids[]" value="{{ $tanker->tanker_id }}"></td>
-                                                <td>{{ $tanker->godown->Name ?? '-' }}</td>
-                                                <td>{{ $tanker->tanker_name }}</td>
-                                                <td>{{ $tanker->tanker_code }}</td>
-                                                <td>{{ $tanker->status == 0 ? 'Inside' : 'Outside' }}</td>
-                                                <td>{{ date('d-m-Y', strtotime($tanker->created_at)) }}</td>
-                                                <td>
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-primary"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#editTankerModal"
-                                                        data-id="{{ $tanker->tanker_id }}"
-                                                        data-name="{{ $tanker->tanker_name }}"
-                                                        data-code="{{ $tanker->tanker_code }}"
-                                                        data-godown-id="{{ $tanker->godown_id }}"
-                                                        data-status="{{ $tanker->status }}">
+                                        @foreach($tankers as $t)
+                                        <tr>
+                                            <td><input type="checkbox" class="rowCheck" value="{{ $t->tanker_id }}"></td>
+                                            <td>{{ $t->godown->Name ?? '-' }}</td>
+                                            <td>{{ $t->tanker_name }}</td>
+                                            <td>{{ $t->tanker_code }}</td>
+                                            <td>{{ $t->status == 0 ? 'Inside' : 'Outside' }}</td>
+                                            <td>{{ date('d-m-Y', strtotime($t->created_at)) }}</td>
+
+                                            <td>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-primary edit-btn"
+                                                    data-id="{{ $t->tanker_id }}"
+                                                    data-name="{{ $t->tanker_name }}"
+                                                    data-code="{{ $t->tanker_code }}"
+                                                    data-godown-id="{{ $t->godown_id }}"
+                                                    data-status="{{ $t->status }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editTankerModal">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
 
-<!--                                                     <button type="button" class="btn btn-sm btn-primary edit-btn" data-id="{{ $tanker->tanker_id }}">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button> -->
-                                                    <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="{{ $tanker->tanker_id }}">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-danger delete-btn"
+                                                    data-id="{{ $t->tanker_id }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+
+                                        </tr>
                                         @endforeach
                                     </tbody>
+
                                 </table>
-                                <div class="d-flex justify-content-center">
-                                    {!! $tankers->links() !!}
-                                </div>
                             </div>
+
+                            <div class="d-flex justify-content-center">
+                                {!! $tankers->links() !!}
+                            </div>
+
                         </div>
-                    </form>
+                    </div>
+
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
 @include('admin.tanker.edit-modal')
 @endsection
 
+
 @section('scripts')
 <script>
-    $('#selectAll').click(function() {
-        $('input[name="ids[]"]').prop('checked', this.checked);
-    });
-
-    $('.delete-btn').click(function () {
-        if (confirm('Delete this record?')) {
-            let id = $(this).data('id');
-            $.post("{{ route('tanker.delete') }}", {
-                id: id,
-                _token: '{{ csrf_token() }}'
-            }, function (response) {
-                if (response.success) {
-                    location.reload();
-                }
-            });
-        }
-    });
-document.addEventListener('click', function(e){
-  const btn = e.target.closest('[data-bs-target="#editTankerModal"]');
-  if (!btn) return;
-
-  const id     = btn.getAttribute('data-id');
-  const name   = btn.getAttribute('data-name');
-  const code   = btn.getAttribute('data-code');
-  const godown_id   = btn.getAttribute('data-godown-id');
-  const status = btn.getAttribute('data-status');
-
-  const form = document.getElementById('editTankerForm');
-  form.action = "{{ url('admin/tanker') }}/" + id; // e.g. /admin/tanker/{id}
-
-  document.querySelector('#editTankerForm [name="tanker_id"]').value = id;
-  document.querySelector('#editTankerForm [name="tanker_name"]').value = name;
-  document.querySelector('#editTankerForm [name="tanker_code"]').value = code;
-  document.querySelector('#editTankerForm [name="godown_id"]').value = godown_id;
-  document.querySelector('#editTankerForm [name="status"]').value = status;
+/* Select All */
+$('#selectAll').click(function(){
+    $('.rowCheck').prop('checked', this.checked);
 });
 
+/* Single Delete */
+$('.delete-btn').click(function () {
+
+    if (!confirm("Delete this tanker?")) return;
+
+    let id = $(this).data('id');
+
+    $.post("{{ route('tanker.delete') }}", 
+    {
+        id: id,
+        _token: '{{ csrf_token() }}'
+    }, function (res) {
+        if (res.success) location.reload();
+    });
+});
+
+/* Bulk Delete */
+$('#bulkDeleteBtn').click(function(){
+
+    let ids = [];
+    $('.rowCheck:checked').each(function(){
+        ids.push($(this).val());
+    });
+
+    if(ids.length === 0){
+        alert("Select at least one.");
+        return;
+    }
+
+    if (!confirm("Delete selected tankers?")) return;
+
+    $.post("{{ route('tanker.bulkDelete') }}", {
+        ids: ids,
+        _token: '{{ csrf_token() }}'
+    }, function(res){
+        if(res.success) location.reload();
+    });
+
+});
+
+/* EDIT MODAL DATA */
+document.addEventListener('click', function(e){
+
+    let btn = e.target.closest('.edit-btn');
+    if (!btn) return;
+
+    let id = btn.dataset.id;
+    let name = btn.dataset.name;
+    let code = btn.dataset.code;
+    let godown = btn.dataset.godownId;
+    let status = btn.dataset.status;
+
+    let form = document.getElementById('editTankerForm');
+    form.action = "/admin/tanker/" + id;
+
+    form.querySelector('[name="tanker_name"]').value = name;
+    form.querySelector('[name="tanker_code"]').value = code;
+    form.querySelector('[name="godown_id"]').value = godown;
+    form.querySelector('[name="status"]').value = status;
+
+});
 </script>
 @endsection
