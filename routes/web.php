@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\TankerController;
+use App\Http\Controllers\Admin\TruckController;
+use App\Http\Controllers\Admin\DriverController;
 use App\Http\Controllers\Admin\EmployeeMasterController;
 use App\Http\Controllers\Admin\GodownMasterController;
 use App\Http\Controllers\Admin\VendorMasterController;
@@ -18,10 +20,13 @@ use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\EmpSalaryController;
 use App\Http\Controllers\Admin\DailyExpenceTypeController;
 use App\Http\Controllers\Admin\DailyExpenceController;
+use App\Http\Controllers\Admin\IsconDailyExpenceController;
 use App\Http\Controllers\Admin\AttendanceReportController;
 
 use App\Http\Controllers\Admin\DailyOrderController;
 use App\Http\Controllers\Admin\CollectionReportController;
+use App\Http\Controllers\Admin\TripController;
+
 
 Route::fallback(function () {
      return view('errors.404');
@@ -85,12 +90,13 @@ Route::prefix('admin')->group(function () {
     Route::get('tanker', [TankerController::class, 'index'])->name('tanker.index');
     Route::post('tanker/store', [TankerController::class, 'store'])->name('tanker.store');
     Route::get('tanker/edit/{id}', [TankerController::class, 'edit'])->name('tanker.edit');
-    Route::post('tanker/{tanker}', [TankerController::class, 'update'])->name('tanker.update');
-    Route::post('tanker/delete', [TankerController::class, 'delete'])->name('tanker.delete');
+    Route::post('tanker/update/{tanker}', [TankerController::class, 'update'])->name('tanker.update');
+    Route::post('tanker/delete/{tanker?}', [TankerController::class, 'delete'])->name('tanker.delete');
     Route::post('tanker/bulk-delete', [TankerController::class, 'bulkDelete'])->name('tanker.bulkDelete');
     Route::get('tanker/names', [TankerController::class, 'names'])->name('tankers.names');
     Route::get('tankers/in-godown', [TankerController::class, 'inGodown'])->name('tankers.in-godown');
 });
+
 
 // Employee Master
 Route::prefix('admin')->group(function () {
@@ -291,4 +297,51 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admin/collection-report',                [CollectionReportController::class, 'index'])->name('reports.collection');
     Route::get('admin/collection-report/day/{date}',     [CollectionReportController::class, 'day'])->where('date','\d{4}-\d{2}-\d{2}')->name('reports.collection.day');
     Route::get('admin/collection-report/details',        [CollectionReportController::class, 'range'])->name('reports.collection.range'); // full detail for range
+});
+
+
+/// Truck master 
+Route::prefix('admin')->group(function () {
+    Route::get('truck', [TruckController::class, 'index'])->name('truck.index');
+    Route::post('truck/store', [TruckController::class, 'store'])->name('truck.store');
+    Route::get('truck/edit/{id}', [TruckController::class, 'edit'])->name('truck.edit');
+    Route::put('truck/update/{id}', [TruckController::class, 'update'])->name('truck.update');
+    Route::post('truck/delete', [TruckController::class, 'destroy'])->name('truck.delete');
+    Route::post('truck/bulk-delete', [TruckController::class, 'bulkDelete'])->name('truck.bulkDelete');
+});
+
+
+// driver master 
+Route::prefix('admin')->group(function () {
+    Route::get('driver', [DriverController::class, 'index'])->name('driver.index');
+    Route::post('driver/store', [DriverController::class, 'store'])->name('driver.store');
+    Route::put('driver/{id}', [DriverController::class, 'update'])->name('driver.update');
+    Route::post('driver/delete', [DriverController::class, 'delete'])->name('driver.delete');
+    Route::post('driver/bulk-delete', [DriverController::class, 'bulkDelete'])->name('driver.bulkDelete');
+
+});
+
+
+Route::middleware(['web','auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('iscon-daily-expences', [IsconDailyExpenceController::class, 'index'])->name('iscon-daily-expences.index');
+    Route::post('iscon-daily-expences', [IsconDailyExpenceController::class, 'store'])->name('iscon-daily-expences.store');
+    Route::get('iscon-daily-expences/{id}', [IsconDailyExpenceController::class, 'show'])->name('iscon-daily-expences.show'); // JSON for edit modal
+    Route::put('iscon-daily-expences/{id}', [IsconDailyExpenceController::class, 'update'])->name('iscon-daily-expences.update');
+    Route::delete('iscon-daily-expences/{id}', [IsconDailyExpenceController::class, 'destroy'])->name('iscon-daily-expences.destroy');
+
+    Route::post('iscon-daily-expences/bulk-delete', [IsconDailyExpenceController::class, 'bulkDelete'])->name('iscon-daily-expences.bulk-delete');
+    Route::post('iscon-daily-expences/{id}/toggle', [IsconDailyExpenceController::class, 'toggleStatus'])->name('iscon-daily-expences.toggle');
+});
+
+
+Route::prefix('admin')->group(function () {
+
+    // LISTING PAGE
+    Route::get('trip', [TripController::class, 'index'])->name('trip.index');
+    Route::get('trip/create', [TripController::class, 'create'])->name('trip.create');
+    Route::post('trip/store', [TripController::class, 'store'])->name('trip.store');
+    Route::get('trip/{id}/edit', [TripController::class, 'edit'])->name('trip.edit');
+    Route::post('trip/{id}', [TripController::class, 'update'])->name('trip.update');
+    Route::post('trip/delete', [TripController::class, 'delete'])->name('trip.delete');
+    Route::post('trip/bulk-delete', [TripController::class, 'bulkDelete'])->name('trip.bulkDelete');
 });
