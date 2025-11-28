@@ -341,7 +341,7 @@ Route::prefix('admin')->group(function () {
     Route::get('trip/create', [TripController::class, 'create'])->name('trip.create');
     Route::post('trip/store', [TripController::class, 'store'])->name('trip.store');
     Route::get('trip/{id}/edit', [TripController::class, 'edit'])->name('trip.edit');
-    Route::post('trip/{id}', [TripController::class, 'update'])->name('trip.update');
+    Route::post('trip/edit/{id}', [TripController::class, 'update'])->name('trip.update');
     Route::post('trip/delete', [TripController::class, 'delete'])->name('trip.delete');
     Route::post('trip/bulk-delete', [TripController::class, 'bulkDelete'])->name('trip.bulkDelete');
 });

@@ -98,7 +98,7 @@ class TripController extends Controller
 
     public function delete(Request $request)
     {
-        Trip::where('trip_id', $request->id)->update(['isDelete' => 1]);
+        $dd=Trip::where('trip_id', $request->id)->delete();
         return response()->json(['success' => true]);
     }
 
