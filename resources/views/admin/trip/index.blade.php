@@ -42,6 +42,8 @@
                                class="form-control">
 
                         <button class="btn btn-primary">Search</button>
+                        <a href="{{ route('trip.index') }}" class="btn btn-light">Reset</a>
+
                     </div>
                 </form>
 
@@ -68,7 +70,7 @@
                             @foreach($trips as $trip)
                             <tr>
                                 <td><input type="checkbox" class="rowCheck" value="{{ $trip->trip_id }}"></td>
-                                <td>{{ $trip->trip_date }}</td>
+                                <td>{{ date('d-m-Y',strtotime($trip->trip_date)) }}</td>
                                 <td>{{ $trip->truck->truck_name ?? '-' }}</td>
                                 <td>{{ $trip->driver->driver_name ?? '-' }}</td>
                                 <td>{{ $trip->product }}</td>
@@ -80,8 +82,8 @@
                                        class="btn btn-primary btn-sm">
                                         <i class="fa fa-edit"></i>
                                     </a>
+                                    <button type="button" class="btn btn-danger btn-sm deleteBtn"
 
-                                    <button class="btn btn-danger btn-sm deleteBtn"
                                             data-id="{{ $trip->trip_id }}">
                                         <i class="fa fa-trash"></i>
                                     </button>
