@@ -663,7 +663,7 @@
 
 @media (min-width:1024.1px) {
     [data-layout=horizontal] .page-content {
-        margin-top: 130px
+        margin-top: 100px
     }
 }
 
@@ -2272,7 +2272,7 @@ a {
 
 [data-layout=horizontal] .navbar-menu .navbar-nav .nav-link {
     color: var(--vz-topnav-item-color);
-    padding: .75rem 1.5rem
+    padding: .70rem 0.5rem
 }
 
 [data-layout=horizontal] .navbar-menu .navbar-nav .nav-link i {

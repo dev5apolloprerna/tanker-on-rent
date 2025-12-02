@@ -270,7 +270,9 @@ Route::prefix('daily-orders')->group(function () {
     Route::get('daily-orders/create', [DailyOrderController::class, 'create'])->name('daily-orders.create');
     Route::post('/', [DailyOrderController::class, 'store'])->name('daily-orders.store');
     Route::get('daily-orders/edit/{id}', [DailyOrderController::class, 'edit'])->name('daily-orders.edit');
-    Route::put('/{id}', [DailyOrderController::class, 'update'])->name('daily-orders.update');
+    Route::put('daily-orders/{daily_order}', [DailyOrderController::class, 'update'])
+        ->name('daily-orders.update');
+
     Route::delete('/{id}', [DailyOrderController::class, 'destroy'])->name('daily-orders.destroy');
 
     // Payments against a customer (optional daily_order_id can be passed)
@@ -344,4 +346,6 @@ Route::prefix('admin')->group(function () {
     Route::post('trip/edit/{id}', [TripController::class, 'update'])->name('trip.update');
     Route::post('trip/delete', [TripController::class, 'delete'])->name('trip.delete');
     Route::post('trip/bulk-delete', [TripController::class, 'bulkDelete'])->name('trip.bulkDelete');
+    Route::get('trip/exportData/{FromDate?}/{ToDate?}/{truckid?}', [TripController::class,'ExportTripData'])->name('trip.exportData');
+
 });

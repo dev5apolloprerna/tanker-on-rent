@@ -24,6 +24,11 @@ class Truck extends Model
         return $this->hasOne( OrderMaster::class, 'truck_id', 'truck_id')
                     ->where('isDelete', operator: 0);
     }
+     public function godown()
+    {
+        return $this->hasOne( GodownMaster::class, 'godown_id', 'godown_id')
+                    ->where('isDelete', operator: 0);
+    }
     protected static function booted()
     {
         // On create: set slug if empty

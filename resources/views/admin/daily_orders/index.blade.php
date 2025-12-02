@@ -106,14 +106,16 @@
                                   data-id="{{ $r->daily_order_id }}"
                                   data-placed="{{ $placedDate }}"
                                   data-rate="200"
-                                  data-customer="{{ $r->customer_name }}">
+                                  data-customer="{{ $r->customer_name }}"
+                                  title="Mark as Not Received"
+                                  >
                             Mark Received
                           </button>
                         @else
                           {{-- Already received → allow undo --}}
                           <form method="POST" action="{{ route('daily-orders.unreceive', $r->daily_order_id) }}" class="d-inline">
                             @csrf @method('PUT')
-                            <button class="btn btn-sm btn-warning">Mark Not Received</button>
+                            <button class="btn btn-sm btn-warning" title="Mark as Received">Not Received</button>
                           </form>
                         @endif
                        <a href="{{ route('daily-orders.edit', $r->daily_order_id) }}" class="btn btn-sm btn-primary">
@@ -259,6 +261,16 @@
         <div class="mb-2 small text-muted" id="receiveContext"></div>
 
         <div class="row g-2">
+          <div class="mb-3">
+            <label class="form-label">Select Godown <span class="text-danger">*</span></label>
+            <select name="godown_id" class="form-select" required>
+              <option value="">-- Choose --</option>
+              @foreach($godowns as $g)
+                <option value="{{ $g->godown_id }}">{{ $g->Name }}</option>
+              @endforeach
+            </select>
+          </div>
+
           <div class="col-md-6">
             <label class="form-label">Placed Date</label>
             <input type="date" class="form-control" id="placedDate" readonly>
@@ -449,10 +461,18 @@
     if(!y||!m||!d) return null;
     return new Date(Date.UTC(y, m-1, d));
   }
-  function diffDays(a,b){ // b - a, NOT inclusive (25->27 = 2)
+  function diffDays(a,b){
     const ms = (b - a);
-    return ms < 0 ? 0 : Math.floor(ms / 86400000);
-  }
+    let days = ms < 0 ? 0 : Math.floor(ms / 86400000);
+
+    // ✔ match same logic as table calc
+    if(days > 0){
+        days = days - 1;
+    }
+
+    return days;
+}
+
   function fmtCurrency(n){
     try { return '₹' + (Number(n)||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
     catch { return '₹' + (Number(n)||0).toFixed(2); }

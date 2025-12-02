@@ -110,6 +110,7 @@
         <!-- <small class="text-muted">Digits only (10–15)</small> -->
       </div>
 
+     
       {{-- Location --}}
       <div class="col-md-6 mb-3">
         <label class="form-label">Location <span class="text-danger">*</span></label>
@@ -119,6 +120,18 @@
 
       {{-- Rent Date / Service Type --}}
       <div class="row g-2">
+         <div class="col-md-6">
+          <label class="form-label">Tanker <span style="color:red;">*</span></label>
+          <select class="form-select" name="tanker_id">
+              <option value="">-- Select Tanker --</option>
+              @foreach($tankers as $tid => $tno)
+                  <option value="{{ $tid }}" {{ (string)old('tanker_id', $order->tanker_id ?? '') === (string)$tid ? 'selected' : '' }}>
+                      {{ $tno }}
+                  </option>
+              @endforeach
+          </select>
+      </div>
+
         <div class="col-md-6">
           <label class="form-label">Service Date <span class="text-danger">*</span></label>
           <input type="date" name="rent_date" id="rent_date" class="form-control"
@@ -136,16 +149,17 @@
                  placeholder="e.g. Tanker"
                  value="{{ old('empty_the_tanker', $isEdit ? $order->empty_the_tanker : '') }}" required>
         </div>
+        
+      </div>
+
+      {{-- Amount / Status --}}
+      <div class="row g-2 mt-2">
         <div class="col-md-6">
           <label class="form-label">Filled The Tanker<span class="text-danger">*</span></label>
           <input type="text" name="filled_the_tanker" id="filled_the_tanker" class="form-control"
                  placeholder="e.g. Tanker"
                  value="{{ old('filled_the_tanker', $isEdit ? $order->filled_the_tanker : '') }}" required>
         </div>
-      </div>
-
-      {{-- Amount / Status --}}
-      <div class="row g-2 mt-2">
         <div class="col-md-6">
           <label class="form-label">Total Amount (₹) <span class="text-danger">*</span></label>
           <input type="number" min="0" name="total_amount" id="amount" class="form-control"

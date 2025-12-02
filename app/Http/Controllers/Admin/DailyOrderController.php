@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 
 use App\Models\DailyOrder;
 use App\Models\DailyOrderLedger;
+use App\Models\GodownMaster;
 use App\Models\Customer;
 use App\Models\RentPrice;
+use App\Models\Tanker;
 use App\Services\LedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -28,6 +30,7 @@ class DailyOrderController extends Controller
                 ->paginate(20);
             
             $dailyrate=RentPrice::select('amount')->where(['rent_type'=>'Daily'])->first();
+            $godowns=GodownMaster::where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
             $rate = $dailyrate->amount; // ₹/day default
 
             // running totals for footer
@@ -92,7 +95,7 @@ class DailyOrderController extends Controller
                 return $r;
             });
 
-            return view('admin.daily_orders.index', compact('rows', 'rate', 'totals'));
+            return view('admin.daily_orders.index', compact('rows', 'rate', 'totals','godowns'));
         }
     /*public function index(Request $request)
     {
@@ -129,14 +132,16 @@ class DailyOrderController extends Controller
     public function create() {
         $customers = Customer::orderBy('customer_name')->get(['customer_id','customer_name','customer_mobile']);
         $recent = DailyOrder::latest('rent_date')->limit(8)->get();
-        return view('admin.daily_orders.add-edit', compact('customers','recent'));
+          $tankers   = Tanker::where(['iStatus'=> 1,'status'=>0,'isDelete'=>0])->orderBy('tanker_code', 'asc')->pluck('tanker_code', 'tanker_id','tanker_name');    
+        return view('admin.daily_orders.add-edit', compact('customers','recent','tankers'));
     }
 
     public function edit($id) {
         $order = DailyOrder::findOrFail($id);
         $customers = Customer::orderBy('customer_name')->get(['customer_id','customer_name','customer_mobile']);
+        $tankers   = Tanker::where(['iStatus'=> 1,'status'=>0,'isDelete'=>0])->orderBy('tanker_code', 'asc')->pluck('tanker_code', 'tanker_id','tanker_name');
         $recent = DailyOrder::latest('rent_date')->limit(8)->get();
-        return view('admin.daily_orders.add-edit', compact('order','customers','recent'));
+        return view('admin.daily_orders.add-edit', compact('order','customers','recent','tankers'));
     }
 
  public function store(Request $request)
@@ -157,6 +162,7 @@ class DailyOrderController extends Controller
         DB::transaction(function () use ($request, $customerId, $customerName, $mobile) {
             $order = DailyOrder::create([
                 'customer_id'   => $customerId,
+                'tanker_id'   => $request->tanker_id,
                 'customer_name' => $customerName,
                 'mobile'        => $mobile,
                 'location'      => $request->input('location'),
@@ -172,13 +178,18 @@ class DailyOrderController extends Controller
             $this->ledger->addDebitForOrder($order, 'Order debit');
         });
 
+
+        $this->syncTankerStatus((int)$order->tanker_id, (string)$order->tanker_location);
+
+
         return redirect()->route('daily-orders.index')->with('success','Order saved.');
     }
 
     public function update(Request $request, DailyOrder $daily_order)
     {
         $validated  = $this->validatePayload($request);
-
+        $oldTankerId       = (int)$daily_order->tanker_id;
+        
         $isRetail   = $validated['customer_type'] === 'retail';
         $customerId = $isRetail ? 0 : (int) $request->input('customer_id');
         $cust       = $isRetail ? null : Customer::find($customerId);
@@ -192,6 +203,7 @@ class DailyOrderController extends Controller
 
             // ✅ Direct assignment avoids $fillable issues; ensures customer_id is set (never null)
             $daily_order->customer_id       = (int) $customerId;
+            $daily_order->tanker_id         = $request->tanker_id;
             $daily_order->customer_name     = $customerName;
             $daily_order->mobile            = $mobile;
             $daily_order->location          = $request->input('location');
@@ -210,9 +222,23 @@ class DailyOrderController extends Controller
             }
         });
 
+        if ($oldTankerId !== (int)$daily_order->tanker_id) {
+            Tanker::where('tanker_id', $oldTankerId)->update(['status' => 0]);
+            DailyOrder::where('tanker_id', $oldTankerId)->update(['isReceive' => 0]);
+        }
+        $this->syncTankerStatus((int)$daily_order->tanker_id, (string)$daily_order->tanker_location);
+
+
         return redirect()->route('daily-orders.index')->with('success','Order updated.');
     }
 
+    private function syncTankerStatus(int $tankerId, string $tankerLocation): void
+    {
+        // outside => status = 1 ; anything else => 0
+        $isOutside = strtolower(trim($tankerLocation)) !== null;
+        Tanker::where('tanker_id', $tankerId)->update(['status' => $isOutside ? 1 : 0]);
+        DailyOrder::where('tanker_id', $tankerId)->update(['isReceive' => $isOutside ? 1 : 0]);
+    }
 
         public function orderPayments(int $order)
         {
@@ -343,6 +369,7 @@ class DailyOrderController extends Controller
     }
         public function receive(Request $request, int $id)
     {
+
         $order = DailyOrder::where('isDelete', 0)->findOrFail($id);
 
         // Resolve dates
@@ -350,6 +377,15 @@ class DailyOrderController extends Controller
         if (!$placed) {
             return back()->with('error', 'Placed date is missing; cannot compute days.');
         }
+
+
+        /*$tanker = Tanker::findOrFail($order->tanker_id);
+
+        // mark as RECEIVED
+        $tanker->status = 0;                   // 0 = Received (as per your current logic/UI)
+        $tanker->godown_id = $request->godown_id ?? null;  // ensure column exists (note below)
+        $tanker->save();
+*/
 
         $placedAt   = Carbon::parse($placed)->startOfDay();
         $receivedAt = $request->filled('received_date')
@@ -370,6 +406,7 @@ class DailyOrderController extends Controller
         $order->extra_duration     = $days;                         // store computed total
         $order->save();
 
+
         // Optional: if you maintain a ledger, you could append/adjust here.
         // app(LedgerService::class)->addCreditPayment($order->customer_id, $amount, 'Daily Order received', $receivedAt->toDateString(), $order->daily_order_id);
 
@@ -388,6 +425,18 @@ class DailyOrderController extends Controller
         $order->extra_amount = 0;
         $order->extra_duration = 0;
         $order->save();
+
+
+        if($order->tanker_id != null)
+        {
+
+            $tanker = Tanker::findOrFail($order->tanker_id);
+
+            // mark as RECEIVED
+            $tanker->status = 1;                   // 0 = Received (as per your current logic/UI)
+            $tanker->save();
+        }
+
 
         return back()->with('success', 'Tanker marked as not received.');
     }
