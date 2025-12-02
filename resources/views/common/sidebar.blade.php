@@ -114,12 +114,12 @@ $roleid = Auth::guard('web_employees')->user()->role_id;
                         </li>-->
                         <li class="nav-item">
                             <a href="{{ route('orders.index') }}" class="nav-link {{ request()->is('admin/orders*') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-file-invoice"></i>Orders(ઓર્ડર)
+                                <i class="nav-icon fas fa-file-invoice"></i>Orders (ઓર્ડર)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="{{ route('daily-orders.index') }}" class="nav-link {{ request()->is('admin/daily-orders*') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-file-invoice"></i>Daily Order(દૈનિક ઓર્ડર)
+                                <i class="nav-icon fas fa-file-invoice"></i>Daily Order (દૈનિક ઓર્ડર)
                             </a>
                         </li>
                         <li class="nav-item">

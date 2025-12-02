@@ -99,6 +99,14 @@
 
                     </div>
                     <div class="col-md-6 mb-4">
+                        <label class="form-label">No Of Packet <span class="text-danger">*</span></label>
+                        <input type="text" name="no_of_bags" class="form-control" value="{{ old('no_of_bags', $trip->no_of_bags ?? '') }}" required>
+                        @if($errors->has('no_of_bags'))
+                            <span class="text-danger">{{ $errors->first('no_of_bags') }}</span>
+                        @endif
+
+                    </div>
+                    <div class="col-md-6 mb-4">
                         <label class="form-label">Weight <span class="text-danger">*</span></label>
                         <input type="text" name="weight" class="form-control" value="{{ old('weight', $trip->weight ?? '') }}" required>
                         @if($errors->has('weight'))
@@ -106,7 +114,6 @@
                         @endif
 
                     </div>
-
                 </div>
 
                 <button type="submit" class="btn btn-success">

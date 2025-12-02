@@ -72,7 +72,7 @@ class OrderMasterController extends Controller
             $totalUnpaid += $snap['unpaid'];
         }
             
-        $godowns =GodownMaster::select('godown_id','Name')->orderBy('Name')->get();
+        $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
         $paymentUser =PaymentReceivedUser::select('received_id','name')->orderBy('name')->get();
 
         return view('admin.orders.index', compact('orders','totalPaid','totalUnpaid','godowns','paymentUser'));
@@ -82,7 +82,7 @@ class OrderMasterController extends Controller
     public function create()
     {
         $customers = Customer::where('iStatus', 1)->orderBy('customer_name', 'asc')->pluck('customer_name', 'customer_id');
-        $tankers   = Tanker::where(['iStatus'=> 1,'status'=>0])->orderBy('tanker_code', 'asc')->pluck('tanker_code', 'tanker_id');
+        $tankers   = Tanker::where(['iStatus'=> 1,'status'=>0,'isDelete'=>0])->orderBy('tanker_code', 'asc')->pluck('tanker_code', 'tanker_id','tanker_name');
         $renttype = RentPrice::select('rent_price_id','rent_type','amount')->orderBy('rent_type')->get();
 
         return view('admin.orders.add-edit', compact('customers', 'tankers','renttype'));

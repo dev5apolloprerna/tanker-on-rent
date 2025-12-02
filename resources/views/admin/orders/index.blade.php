@@ -158,7 +158,7 @@
                                             <a href="{{ route('orders.toggle-receive', $o->order_id) }}"
                                               class="btn btn-sm btn-success"
                                               onclick="return confirm('Are you sure you want to mark as NOT RECEIVED?')">
-                                              Received
+                                               Mark Received
                                             </a>
                                           @endif
 

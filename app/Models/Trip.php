@@ -10,9 +10,7 @@ class Trip extends Model
     protected $primaryKey = "trip_id";
 
     protected $fillable = [
-        'trip_date', 'truck_id', 'driver_id', 'product',
-        'source', 'destination', 'weight',
-        'iStatus', 'isDelete'
+        'trip_id', 'trip_date', 'truck_id', 'driver_id', 'product', 'source', 'destination', 'no_of_bags', 'weight', 'total_weight'
     ];
 
     public function truck()

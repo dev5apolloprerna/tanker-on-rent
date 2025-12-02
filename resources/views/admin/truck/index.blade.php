@@ -14,6 +14,15 @@
                             <h5 class="card-title">Add Truck</h5>
                             <form method="POST" action="{{ route('truck.store') }}">
                                 @csrf
+                                <div class="mb-3">
+                                    <label class="form-label">Godown<span class="text-danger">*</span></label>
+                                    <select name="godown_id" class="form-control">
+                                        <option value="">Select Godown</option>
+                                        @foreach($godown as $g)
+                                            <option value="{{ $g->godown_id }}">{{ $g->Name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                  <div class="mb-3">
                                     <label class="form-label">Truck Name <span style="color:red;">*</span></label>
                                     <input type="text" name="truck_name" class="form-control" value="{{ old('truck_name') }}">
@@ -28,6 +37,14 @@
                                         <span class="text-danger">{{ $errors->first('truck_number') }}</span>
                                     @endif
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select name="status" class="form-control">
+                                        <option value="0">Inside</option>
+                                        <option value="1">Outside</option>
+                                    </select>
+                                </div>
+
                                 
                                 <button type="submit" class="btn btn-success">Submit</button>
                                 <button type="reset" class="btn btn-light">Clear</button>
@@ -56,6 +73,7 @@
                                             <th><input type="checkbox" id="selectAll"></th>
                                             <th>Name</th>
                                             <th>Number</th>
+                                            <th>Godown Name</th>
                                             <th>Status</th>
                                             <th>Created On</th>
                                             <th>Action</th>
@@ -67,13 +85,17 @@
                                                 <td><input type="checkbox" name="ids[]" value="{{ $truck->truck_id }}"></td>
                                                 <td>{{ $truck->truck_name }}</td>
                                                 <td>{{ $truck->truck_number }}</td>
+                                                <td>{{ $truck->godown->Name ?? '-' }}</td>
                                                 <td>{{ $truck->status == 0 ? 'Inside' : 'Outside' }}</td>
                                                 <td>{{ date('d-m-Y', strtotime($truck->created_at)) }}</td>
                                                 <td>
                                                     <button type="button" class="btn btn-sm btn-info editBtn"
                                                         data-id="{{ $truck->truck_id }}"
                                                         data-name="{{ $truck->truck_name }}"
-                                                        data-number="{{ $truck->truck_number }}">
+                                                        data-number="{{ $truck->truck_number }}"
+                                                        data-godown_id="{{ $truck->godown_id }}"
+
+                                                        >
                                                         <i class="fas fa-edit"></i>
                                                     </button>
 
@@ -141,8 +163,9 @@ $(document).on('click', '[data-bs-target="#editTruckModal"]', function () {
     let code = $(this).data('code');
 
     let form = $('#editTruckForm');
-    form.attr('action', "{{ url('admin/tanker') }}/" + id);
+    form.attr('action', "{{ url('admin/truck/update') }}/" + id);
 
+    $('#editTruckForm [name="godown_id"]').val(godown_id);
     $('#editTruckForm [name="truck_id"]').val(id);
     $('#editTruckForm [name="truck_name"]').val(name);
     $('#editTruckForm [name="truck_number"]').val(code);
@@ -153,12 +176,14 @@ $(".editBtn").on("click", function () {
     let id = $(this).data("id");
     let name = $(this).data("name");
     let number = $(this).data("number");
+    let godown_id = $(this).data("godown_id");
 
     $("#editId").val(id);
+    $("#editgodown_id").val(godown_id);
     $("#editName").val(name);
     $("#editNumber").val(number);
 
-    $("#editForm").attr("action", "/admin/truck/" + id);
+    $("#editForm").attr("action", "/admin/truck/update/" + id);
 
     // Open Bootstrap 5 modal
     var modal = new bootstrap.Modal(document.getElementById('editModal'));
