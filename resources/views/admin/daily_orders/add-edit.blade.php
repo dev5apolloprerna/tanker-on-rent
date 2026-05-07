@@ -122,7 +122,7 @@
       <div class="row g-2">
          <div class="col-md-6">
           <label class="form-label">Tanker <span style="color:red;">*</span></label>
-          <select class="form-select" name="tanker_id">
+            <select class="form-select js-tanker-select" name="tanker_id">
               <option value="">-- Select Tanker --</option>
               @foreach($tankers as $tid => $tno)
                   <option value="{{ $tid }}" {{ (string)old('tanker_id', $order->tanker_id ?? '') === (string)$tid ? 'selected' : '' }}>
@@ -188,8 +188,10 @@
 
 @endsection
 @section('scripts')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-  (function(){
+(function(){
   const placed = document.getElementById('placed_the_tanker');
   const empty  = document.getElementById('empty_the_tanker');
   const filled = document.getElementById('filled_the_tanker');
@@ -203,6 +205,14 @@
 
   [placed, empty, filled].forEach(el => el && el.addEventListener('input', recalc));
   recalc(); // prefill on edit
+  
+  if (window.jQuery && window.jQuery.fn.select2) {
+    window.jQuery('.js-tanker-select').select2({
+      width: '100%',
+      placeholder: '-- Select Tanker --',
+      allowClear: true
+    });
+  }
 })();
 
 (function(){

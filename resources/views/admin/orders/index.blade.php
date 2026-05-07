@@ -62,11 +62,11 @@
                             <thead>
                                 <tr>
                                     <th style="width:40px;"><input type="checkbox" id="checkAll"></th>
+                                    <th>Rent Start</th>
                                     <th>Rent Type</th>
                                     <th>Customer</th>
                                     <th>Tanker No</th>
                                     <th>Tanker Name</th>
-                                    <th>Rent Start</th>
                                     <!-- <th>Advance</th>
                                     <th>Rent</th>
                                     <th>Ref. Name</th>
@@ -97,6 +97,7 @@
                                   @endphp
                                     <tr data-id="{{ $o->order_id }}">
                                         <td><input type="checkbox" class="row-check" value="{{ $o->order_id }}"></td>
+                                        <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
                                         <td>{{ $o->rentPrice->rent_type }}</td>
                                         <td>
                                           <a href="javascript:void(0)"
@@ -111,7 +112,7 @@
                                         <!-- <td>{{ $o->customer->customer_name ?? $o->customer_id }}</td> -->
                                         <td>{{ $o->tanker->tanker_code ?? '-' }}</td>
                                         <td>{{ $o->tanker->tanker_name ?? '-' }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
+                                        
                                         <!-- <td>{{ number_format($o->advance_amount) }}</td>
                                         <td>{{ number_format($o->rent_amount) }}</td>
                                         <td>{{ $o->reference_name }}</td>
@@ -216,7 +217,7 @@
 
 {{-- Customer Orders & Payments Modal --}}
 <div class="modal fade" id="customerOrdersModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
 
       <div class="modal-header">
