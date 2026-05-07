@@ -132,7 +132,7 @@
         const amount = btn.dataset.amount;
         const status = btn.dataset.status;
 
-        form.action = "/admin/rent-prices/" + id;
+        form.action = "../admin/rent-prices/" + id;
         methodInput.value = "PUT";
         modalTitle.innerText = "Edit Rent Price";
 

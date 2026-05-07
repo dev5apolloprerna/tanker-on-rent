@@ -1,4 +1,4 @@
-@extends('layouts.app')
+ @extends('layouts.app')
 
 @section('title', isset($order) ? 'Edit Order' : 'Add Order')
 
@@ -105,7 +105,7 @@
                                     {{-- Tanker --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">Tanker <span style="color:red;">*</span></label>
-                                        <select class="form-select" name="tanker_id">
+                                        <select class="form-select js-tanker-select" name="tanker_id">
                                             <option value="">-- Select Tanker --</option>
                                             @foreach($tankers as $tid => $tno)
                                                 <option value="{{ $tid }}" {{ (string)old('tanker_id', $order->tanker_id ?? '') === (string)$tid ? 'selected' : '' }}>
@@ -123,26 +123,28 @@
                                     {{-- Rent Start Date/Time --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">Rent Start Date <span style="color:red;">*</span></label>
-                                        <input type="datetime-local" class="form-control" name="rent_start_date"
+                                        <input type="date" class="form-control" name="rent_start_date"
                                                value="{{ old('rent_start_date', isset($order) 
-                                                    ? \Carbon\Carbon::parse($order->rent_start_date)->format('Y-m-d\TH:i') 
-                                                    : now()->format('Y-m-d\TH:i')) }}">
+                                                    ? \Carbon\Carbon::parse($order->rent_start_date)->format('Y-m-d') 
+                                                    : now()->format('Y-m-d')) }}">
                                         @if($errors->has('rent_start_date'))
                                             <span class="text-danger">{{ $errors->first('rent_start_date') }}</span>
                                         @endif
                                     </div>
 
-
+                                    @if(!isset($order))
                                     {{-- Advance Amount --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">Advance Amount <span style="color:red;">*</span></label>
                                         <input type="number" class="form-control" name="advance_amount" min="0"
-                                               value="{{ old('advance_amount', $order->advance_amount ?? '') }}" placeholder="0">
+                                               value="{{ old('advance_amount', $order->advance_amount ?? '0') }}" placeholder="0">
                                         @if($errors->has('advance_amount'))
                                             <span class="text-danger">{{ $errors->first('advance_amount') }}</span>
                                         @endif
                                     </div>
-
+                                    @endif
+                                    
+                                    
                                     {{-- Rent Amount --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">Rent Amount <span style="color:red;">*</span></label>
@@ -152,10 +154,11 @@
                                             <span class="text-danger">{{ $errors->first('rent_amount') }}</span>
                                         @endif
                                     </div>
+                                    
 
                                     {{-- Reference Name --}}
                                     <div class="col-md-4 mb-4">
-                                        <label class="form-label">Reference Name <span style="color:red;">*</span></label>
+                                        <label class="form-label">Reference Name </label>
                                         <input type="text" class="form-control" name="reference_name"
                                                value="{{ old('reference_name', $order->reference_name ?? '') }}" placeholder="Reference Name">
                                         @if($errors->has('reference_name'))
@@ -165,7 +168,7 @@
 
                                     {{-- Reference Mobile --}}
                                     <div class="col-md-4 mb-4">
-                                        <label class="form-label">Reference Mobile <span style="color:red;">*</span></label>
+                                        <label class="form-label">Reference Mobile </label>
                                         <input type="text" class="form-control" name="reference_mobile_no"
                                                value="{{ old('reference_mobile_no', $order->reference_mobile_no ?? '') }}" placeholder="e.g. 9876543210">
                                         @if($errors->has('reference_mobile_no'))
@@ -175,7 +178,7 @@
 
                                     {{-- Reference Address --}}
                                     <div class="col-md-4 mb-4">
-                                        <label class="form-label">Reference Address <span style="color:red;">*</span></label>
+                                        <label class="form-label">Reference Address </label>
                                         <input type="text" class="form-control" name="reference_address"
                                                value="{{ old('reference_address', $order->reference_address ?? '') }}" placeholder="Reference Address">
                                         @if($errors->has('reference_address'))
@@ -195,7 +198,7 @@
 
 
                                 <div class="col-md-4 mb-4">
-                                        <label class="form-label">Contract <span style="color:red;">*</span></label>
+                                        <label class="form-label">Contract </label>
                                         <textarea  class="form-control" name="contract_text">{{ old('contract_text', $order->contract_text ?? '') }}</textarea>
                                         @if($errors->has('contract_text'))
                                             <span class="text-danger">{{ $errors->first('contract_text') }}</span>
@@ -240,6 +243,8 @@
 @endsection
 
 @section('scripts')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const rentTypeEl  = document.getElementById('rent_type');
@@ -274,5 +279,12 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchPriceAndSet();
   }
 });
+if (window.jQuery && window.jQuery.fn.select2) {
+    window.jQuery('.js-tanker-select').select2({
+      width: '100%',
+      placeholder: '-- Select Tanker --',
+      allowClear: true
+    });
+  }
 </script>
 @endsection

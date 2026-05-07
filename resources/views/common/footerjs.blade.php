@@ -41,3 +41,21 @@
 
 
  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+ <script>
+ document.addEventListener('DOMContentLoaded', function () {
+     if (typeof flatpickr === 'undefined') return;
+
+     document.querySelectorAll('input[type="date"]').forEach(function (input) {
+         if (input.dataset.fpBound === '1') return;
+
+         input.dataset.fpBound = '1';
+         flatpickr(input, {
+             dateFormat: 'Y-m-d',
+             altInput: true,
+             altFormat: 'd-m-Y',
+             allowInput: true,
+         });
+     });
+ });
+ </script>

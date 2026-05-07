@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Set the RESTful update URL using the old id (adjust base path if needed)
   if (id) {
-    form.action = "{{ url('admin/tanker') }}/" + id; // e.g. /admin/tanker/{id}
+    form.action = "{{ url('admin/tanker/update') }}/" + id; // e.g. /admin/tanker/update/{id}
   }
 
   const modal = new bootstrap.Modal(document.getElementById('editTankerModal'));

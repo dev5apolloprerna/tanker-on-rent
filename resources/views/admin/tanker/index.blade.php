@@ -160,8 +160,9 @@ document.addEventListener('click', function(e){
   const status = btn.getAttribute('data-status');
 
   const form = document.getElementById('editTankerForm');
-  form.action = "{{ url('admin/tanker') }}/" + id; // e.g. /admin/tanker/{id}
-
+ // form.action = "{{ url('admin/tanker') }}/" + id; // e.g. /admin/tanker/{id}
+  form.action = "{{ url('admin/tanker/update') }}/" + id; // e.g. /admin/tanker/update/{id}
+    
   document.querySelector('#editTankerForm [name="tanker_id"]').value = id;
   document.querySelector('#editTankerForm [name="tanker_name"]').value = name;
   document.querySelector('#editTankerForm [name="tanker_code"]').value = code;
