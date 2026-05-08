@@ -39,6 +39,9 @@
                     <a href="{{ route('orders.create') }}" class="btn btn-sm btn-primary">
                         <i class="far fa-plus"></i> Add New
                     </a>
+                    <!-- @if(request('rent_type') === 'monthly') -->
+                      
+                    <!-- @endif -->
                 </div>
             </div>
 
@@ -48,6 +51,9 @@
                     <button id="btnBulkDelete" class="btn btn-sm btn-danger">
                         <i class="far fa-trash-alt"></i> Bulk Delete
                     </button>
+                      <a href="{{ route('orders.monthly-pdf', request()->query()) }}" class="btn btn-sm btn-danger ms-1">
+                        <i class="fas fa-file-pdf"></i> PDF
+                      </a>
                 </div>
                
                 <div class="col-md-2">
@@ -107,12 +113,13 @@
                                             class="text-decoration-underline"
                                             data-bs-toggle="modal"
                                             data-bs-target="#customerOrdersModal"
-                                            data-customer-id="{{ $o->customer_id }}">
+                                            data-customer-id="{{ $o->customer_id }}"
+                                            data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}">
                                             {{ $o->customer->customer_name ?? $o->customer_id }}
                                           </a>
                                           <div class="small text-muted mt-1">
                                             <span class="text-success">Paid: ₹{{ number_format($cSummary['paid']) }}</span>
-                                            ·
+                                            <br>
                                             <span class="{{ $cSummary['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">Unpaid: ₹{{ number_format($cSummary['unpaid']) }}</span>
                                           </div>
                                         </td>
@@ -180,12 +187,20 @@
                                             </span>
                                         </td> -->
                                         <td>
-                                            <a href="{{ route('orders.edit', $o->order_id) }}" class="btn btn-sm btn-primary text-white me-2" title="Edit">
+                                            <a href="{{ route('orders.edit', $o->order_id) }}" class="btn btn-sm btn-primary text-white " title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <a href="javascript:void(0)" class="btn btn-sm btn-light text-white btnDelete" title="Delete" data-id="{{ $o->order_id }}">
                                                 <i class="fas fa-trash-alt"></i>
                                             </a>
+                                            @if(($o->rentPrice->rent_type ?? '') === 'Monthly') 
+                                              <a href="{{ route('orders.monthly-pdf', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
+                                                class="btn btn-sm btn-danger"
+                                                title="Customer PDF" target="_blank">
+                                                <i class="fas fa-file-pdf"></i>
+                                              </a>
+                                            @endif
+
                                             <button
                                               class="btn btn-sm btn-info"
                                               data-bs-toggle="modal"
@@ -195,6 +210,7 @@
                                               <i class="fas fa-truck"></i>
                                             </button>
 
+
                                             <button
                                               class="btn btn-sm btn-warning"
                                               data-bs-toggle="modal"
@@ -202,9 +218,12 @@
                                               data-order-id="{{ $o->order_id }}"
                                               data-customer-id="{{ $o->customer_id }}"
                                               data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
+                                              data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}"
+                                              data-order-id-label="{{ $o->order_id }}"
                                               title="Add Payment">
                                               <i class="fa fa-inr"></i>
                                             </button>
+
                                         </td>
                                     </tr>
                                 @empty
@@ -226,11 +245,12 @@
 
 {{-- Customer Orders & Payments Modal --}}
 <div class="modal fade" id="customerOrdersModal" tabindex="-1" aria-hidden="true">
+
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5 class="modal-title">Customer Orders & Payments</h5>
+        <h5 class="modal-title" id="customerOrdersTitle">Customer Orders & Payments</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
@@ -333,7 +353,7 @@
         <input type="hidden" name="order_id" id="pm_order_id">
 
       <div class="modal-header">
-        <h5 class="modal-title">Add Payment</h5>
+        <h5 class="modal-title" id="paymentModalTitle">Add Payment</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
@@ -475,16 +495,40 @@ $(function(){
 
 // for payment 
 
+document.getElementById('paymentModal').addEventListener('submit', function (event) {
+  const form = event.target;
+  if (!form.matches('form')) return;
+
+  const dueText = document.getElementById('pm_unpaid')?.value || '0';
+  const due = Number(String(dueText).replace(/[^0-9.]/g, '')) || 0;
+  const paid = Number(form.querySelector('input[name="paid_amount"]')?.value || 0);
+
+  if (paid > due) {
+    event.preventDefault();
+    alert('Paid amount cannot exceed current unpaid.');
+  }
+});
+
 document.getElementById('paymentModal').addEventListener('show.bs.modal', function (event) {
   const btn = event.relatedTarget;
   const orderId = btn.getAttribute('data-order-id');
   const customerId = btn.getAttribute('data-customer-id');
   const unpaid  = Number(btn.getAttribute('data-unpaid') || 0);
+  const customerName = btn.getAttribute('data-customer-name') || 'Customer';
 
 
   document.getElementById('pm_order_id').value = orderId;
   document.getElementById('pm_unpaid').value   = '₹' + unpaid.toLocaleString('en-IN');
-  
+
+  const paidInput = document.querySelector('#paymentModal input[name="paid_amount"]');
+  if (paidInput) {
+    paidInput.max = unpaid > 0 ? String(unpaid) : '';
+    paidInput.value = '';
+  }
+
+  const payTitle = document.getElementById('paymentModalTitle');
+  if (payTitle) payTitle.textContent = `Add Payment - ${customerName} (Order #${orderId})`;
+
   const historyWrap   = document.getElementById('pm_history');
   const historyLoader = document.getElementById('pm_history_loader');
 
@@ -529,7 +573,11 @@ document.getElementById('paymentModal').addEventListener('show.bs.modal', functi
 document.getElementById('customerOrdersModal').addEventListener('show.bs.modal', function (event) {
   const btn = event.relatedTarget;
   const customerId = btn.getAttribute('data-customer-id');
+  const customerName = btn.getAttribute('data-customer-name') || 'Customer';
   const body = document.getElementById('customerOrdersBody');
+
+  const title = document.getElementById('customerOrdersTitle');
+  if (title) title.textContent = `Customer Orders & Payments - ${customerName}`;
 
   body.innerHTML = '<div class="text-center py-5">Loading customer orders…</div>';
 
