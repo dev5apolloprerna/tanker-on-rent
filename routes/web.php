@@ -158,7 +158,7 @@ Route::prefix('admin')->group(function () {
         ->name('orders.mark-received');
     Route::get('/orders/{id}/orders-summary', [OrderMasterController::class, 'customerOrdersSummary'])
         ->name('orders.orders-summary');
-
+    Route::get('orders-monthly-pdf', [OrderMasterController::class, 'monthlyPdf'])->name('orders.monthly-pdf');
 
     });
 

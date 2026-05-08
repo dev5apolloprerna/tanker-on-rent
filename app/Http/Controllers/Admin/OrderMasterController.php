@@ -13,6 +13,7 @@ use App\Models\PaymentReceivedUser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class OrderMasterController extends Controller
 {
@@ -404,4 +405,72 @@ class OrderMasterController extends Controller
             'meta'     => $meta,
         ]);
     }
+   public function monthlyPdf(Request $request)
+    {
+        $q = OrderMaster::notDeleted()->withSum('paymentMaster', 'paid_amount')->with(['customer', 'tanker', 'rentPrice']);
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $q->where(function ($x) use ($s) {
+                $x->where('rent_type', 'like', "%{$s}%")
+                  ->orWhere('reference_name', 'like', "%{$s}%")
+                  ->orWhere('reference_mobile_no', 'like', "%{$s}%")
+                  ->orWhere('tanker_location', 'like', "%{$s}%");
+            });
+        }
+
+        if ($request->filled('isReceive') && in_array($request->isReceive, ['0', '1'])) {
+            $q->where('isReceive', (int) $request->isReceive);
+        }
+
+        if ($request->filled('customer_id')) {
+            $q->where('customer_id', (int) $request->customer_id);
+        }
+
+        // Monthly-only report
+        $q->whereHas('rentPrice', function ($r) {
+            $r->whereRaw('LOWER(rent_type) = ?', ['monthly']);
+        });
+
+        $orders = $q->orderBy('rent_start_date')->get();
+
+        $reportRows = [];
+        $grandTotal = 0;
+        $grandPaid = 0;
+        $grandUnpaid = 0;
+
+        foreach ($orders as $o) {
+            $snap = $o->dueSnapshot();
+            $months = max(1, (int) ($snap['months'] ?? 1));
+            $start = \Carbon\Carbon::parse($o->rent_start_date);
+            $schedule = [];
+            for ($i = 0; $i < $months; $i++) {
+                $schedule[] = $start->copy()->addMonthsNoOverflow($i)->format('d/m/Y');
+            }
+
+            $reportRows[] = [
+                'order' => $o,
+                'snap' => $snap,
+                'schedule' => $schedule,
+            ];
+
+            $grandTotal += (float) $snap['total_due'];
+            $grandPaid += (float) $snap['paid_sum'];
+            $grandUnpaid += (float) $snap['unpaid'];
+        }
+
+        $pdf = Pdf::loadView('admin.orders.monthly_pdf', [
+            'reportRows' => $reportRows,
+            'grandTotal' => $grandTotal,
+            'grandPaid' => $grandPaid,
+            'grandUnpaid' => $grandUnpaid,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        $fileNamePrefix = $request->filled('customer_id') ? 'customer-monthly-orders-report' : 'monthly-orders-report';
+
+        return $pdf->stream($fileNamePrefix . '-' . now()->format('Ymd_His') . '.pdf');
+    }
 }
+
+

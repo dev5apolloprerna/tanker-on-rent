@@ -23,15 +23,23 @@ class PaymentController extends Controller
         $order = OrderMaster::findOrFail($data['order_id']);
         $snap  = $order->dueSnapshot(); // base (from rent_amount/fallback) + extra
 
-        $newPaid      = (int) $data['paid_amount'];
-        $unpaidBefore = (int) $snap['unpaid'];
+        $normalizeAmount = static function ($value): int {
+            if (is_int($value) || is_float($value)) {
+                return (int) round((float) $value);
+            }
+
+            return (int) round((float) preg_replace('/[^\d.-]/', '', (string) $value));
+        };
+
+        $newPaid      = $normalizeAmount($data['paid_amount']);
+        $unpaidBefore = max(0, $normalizeAmount($snap['unpaid']));
 
         if ($newPaid > $unpaidBefore) {
             return back()->with('error', 'Paid amount cannot exceed current unpaid.');
         }
 
-        return DB::transaction(function () use ($order, $snap, $newPaid, $request) {
-            $newUnpaid = $snap['unpaid'] - $newPaid;
+        return DB::transaction(function () use ($order, $snap, $newPaid, $unpaidBefore, $request) {
+            $newUnpaid = max(0, $unpaidBefore - $newPaid);
 
             OrderPayment::create([
                 'customer_id'         => $order->customer_id,
