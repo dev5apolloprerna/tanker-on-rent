@@ -48,10 +48,10 @@ class PaymentController extends Controller
             return back()->with('success', 'Payment recorded.');
         });
     }
-
-    public function history($orderId)
+    public function history(Request $request, $orderId)
     {
         $order = OrderMaster::findOrFail($orderId);
+        $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
 
         $payments = OrderPayment::with('PaymentReceivedUser')->where('order_id', $orderId)
             ->orderBy('payment_id', 'asc')
@@ -59,7 +59,24 @@ class PaymentController extends Controller
            
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
+        $customerOrders = OrderMaster::notDeleted()
+            ->with(['tanker'])
+            ->where('customer_id', $customerId)
+            ->orderByDesc('order_id')
+            ->get();
 
-        return view('admin.payments._history', compact('order', 'payments', 'snap'));
+        $customerTotals = [
+            'paid' => 0,
+            'unpaid' => 0,
+        ];
+
+        foreach ($customerOrders as $customerOrder) {
+            $customerSnap = $customerOrder->dueSnapshot();
+            $customerOrder->customer_snapshot = $customerSnap;
+            $customerTotals['paid'] += (float) ($customerSnap['paid_sum'] ?? 0);
+            $customerTotals['unpaid'] += (float) ($customerSnap['unpaid'] ?? 0);
+        }
+
+        return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
     }
 }

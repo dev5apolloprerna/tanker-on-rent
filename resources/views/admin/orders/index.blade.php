@@ -64,7 +64,7 @@
                                     <th style="width:40px;"><input type="checkbox" id="checkAll"></th>
                                     <th>Rent Start</th>
                                     <th>Rent Type</th>
-                                    <th>Customer</th>
+                                    <th>Customer (Total)</th>
                                     <th>Tanker No</th>
                                     <th>Tanker Name</th>
                                     <!-- <th>Advance</th>
@@ -76,8 +76,8 @@
                                     <th>Rent</th>
                                     <th>M/D</th>
                                     <th>Total</th>
-                                    <th>Paid</th>
-                                    <th>Unpaid</th>
+                                    <th>Tanker Paid</th>
+                                    <th>Tanker Unpaid</th>
                                     <th>Tanker Status</th>
                                     <th >Action</th>
                                 </tr>
@@ -99,6 +99,9 @@
                                         <td><input type="checkbox" class="row-check" value="{{ $o->order_id }}"></td>
                                         <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
                                         <td>{{ $o->rentPrice->rent_type }}</td>
+                                        @php
+                                            $cSummary = $customerPaymentSummary[$o->customer_id] ?? ['paid' => 0, 'unpaid' => 0];
+                                          @endphp
                                         <td>
                                           <a href="javascript:void(0)"
                                             class="text-decoration-underline"
@@ -107,6 +110,11 @@
                                             data-customer-id="{{ $o->customer_id }}">
                                             {{ $o->customer->customer_name ?? $o->customer_id }}
                                           </a>
+                                          <div class="small text-muted mt-1">
+                                            <span class="text-success">Paid: ₹{{ number_format($cSummary['paid']) }}</span>
+                                            ·
+                                            <span class="{{ $cSummary['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">Unpaid: ₹{{ number_format($cSummary['unpaid']) }}</span>
+                                          </div>
                                         </td>
 
                                         <!-- <td>{{ $o->customer->customer_name ?? $o->customer_id }}</td> -->
@@ -192,7 +200,8 @@
                                               data-bs-toggle="modal"
                                               data-bs-target="#paymentModal"
                                               data-order-id="{{ $o->order_id }}"
-                                              data-unpaid="{{ $snap['unpaid'] }}"
+                                              data-customer-id="{{ $o->customer_id }}"
+                                              data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
                                               title="Add Payment">
                                               <i class="fa fa-inr"></i>
                                             </button>
@@ -469,11 +478,13 @@ $(function(){
 document.getElementById('paymentModal').addEventListener('show.bs.modal', function (event) {
   const btn = event.relatedTarget;
   const orderId = btn.getAttribute('data-order-id');
-  const unpaid  = btn.getAttribute('data-unpaid');
+  const customerId = btn.getAttribute('data-customer-id');
+  const unpaid  = Number(btn.getAttribute('data-unpaid') || 0);
+
 
   document.getElementById('pm_order_id').value = orderId;
-  document.getElementById('pm_unpaid').value   = '₹' + Number(unpaid).toLocaleString('en-IN');
-
+  document.getElementById('pm_unpaid').value   = '₹' + unpaid.toLocaleString('en-IN');
+  
   const historyWrap   = document.getElementById('pm_history');
   const historyLoader = document.getElementById('pm_history_loader');
 
@@ -484,6 +495,9 @@ document.getElementById('paymentModal').addEventListener('show.bs.modal', functi
   // Build URL from named route pattern
   let url = "{{ route('payments.history', ':id') }}";
   url = url.replace(':id', orderId);
+  if (customerId) {
+    url += (url.includes('?') ? '&' : '?') + 'customer_id=' + encodeURIComponent(customerId);
+  }
 
   fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(r => r.text())
