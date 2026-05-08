@@ -66,17 +66,31 @@ class OrderMasterController extends Controller
 
         $totalPaid = 0;
         $totalUnpaid = 0;
-        
+            
+        $customerPaymentSummary = [];
+
         foreach ($orders as $o) {
             $snap = $o->dueSnapshot();
             $totalPaid += $snap['paid_sum'];
             $totalUnpaid += $snap['unpaid'];
+
+            $customerId = (int) $o->customer_id;
+            if (!isset($customerPaymentSummary[$customerId])) {
+                $customerPaymentSummary[$customerId] = [
+                    'paid' => 0,
+                    'unpaid' => 0,
+                ];
+            }
+
+            $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+            $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
+
         }
             
         $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
         $paymentUser =PaymentReceivedUser::select('received_id','name')->orderBy('name')->get();
 
-        return view('admin.orders.index', compact('orders','totalPaid','totalUnpaid','godowns','paymentUser'));
+        return view('admin.orders.index', compact('orders','totalPaid','totalUnpaid','godowns','paymentUser','customerPaymentSummary'));
     }
 
     // CREATE
