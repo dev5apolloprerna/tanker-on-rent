@@ -13,7 +13,8 @@ use App\Models\PaymentReceivedUser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Mpdf\Mpdf;
+
 
 class OrderMasterController extends Controller
 {
@@ -459,17 +460,40 @@ class OrderMasterController extends Controller
             $grandUnpaid += (float) $snap['unpaid'];
         }
 
-        $pdf = Pdf::loadView('admin.orders.monthly_pdf', [
-            'reportRows' => $reportRows,
-            'grandTotal' => $grandTotal,
-            'grandPaid' => $grandPaid,
-            'grandUnpaid' => $grandUnpaid,
-            'generatedAt' => now(),
-        ])->setPaper('a4', 'portrait');
+       $fontPath = $_SERVER['DOCUMENT_ROOT'] . '/tanker_on_rent/fonts/NotoSansGujarati-Regular.ttf';
 
-        $fileNamePrefix = $request->filled('customer_id') ? 'customer-monthly-orders-report' : 'monthly-orders-report';
+        if (!file_exists($fontPath)) {
+            dd('Font not found: ' . $fontPath);
+        }
 
-        return $pdf->stream($fileNamePrefix . '-' . now()->format('Ymd_His') . '.pdf');
+            $html = view('admin.orders.monthly_pdf', [
+                    'reportRows' => $reportRows,
+                    'grandTotal' => $grandTotal,
+                    'grandPaid' => $grandPaid,
+                    'grandUnpaid' => $grandUnpaid,
+                    'generatedAt' => now(),
+                ])->render();
+
+
+
+                $mpdf = new Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4',
+                    'orientation' => 'P',
+                    'autoScriptToLang' => true,
+                    'autoLangToFont' => true,
+                    'default_font' => 'freeserif',
+                ]);
+
+                $mpdf->WriteHTML($html);
+
+                $fileNamePrefix = request()->filled('customer_id')
+                    ? 'customer-monthly-orders-report'
+                    : 'monthly-orders-report';
+
+                return response($mpdf->Output($fileNamePrefix . '-' . now()->format('Ymd_His') . '.pdf', 'I'))
+                    ->header('Content-Type', 'application/pdf');
+
     }
 }
 

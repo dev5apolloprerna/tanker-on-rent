@@ -3,19 +3,66 @@
 <head>
     <meta charset="utf-8">
     <title>Monthly Customer Report</title>
-    <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color:#111; }
-        h2, h4 { margin: 0; text-align: center; }
-        .meta { margin: 8px 0 12px; text-align: right; font-size: 10px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 6px; vertical-align: top; }
-        th { background: #f1f1f1; }
-        .text-right { text-align: right; }
-        .small { font-size: 10px; }
-        .summary { margin-top: 14px; width: 45%; margin-left: auto; }
-        .summary td { border: 1px solid #333; padding: 5px; }
-        .section-gap td { border: none; padding: 8px 0; }
-    </style>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<style>
+@if(!empty($gujaratiFontPath) && file_exists($gujaratiFontPath))
+@font-face {
+    font-family: 'NotoSansGujarati';
+    font-style: normal;
+    font-weight: normal;
+    src: url("{{ 'file://' . str_replace('\\', '/', $gujaratiFontPath) }}") format("truetype");
+}
+@endif
+
+* {
+    font-family: 'NotoSansGujarati', freeserif, DejaVu Sans, sans-serif !important;
+}
+
+body {
+    font-size: 12px;
+    color: #111;
+}
+
+h2, h4 {
+    margin: 0;
+    text-align: center;
+    font-family: 'NotoSansGujarati', freeserif, DejaVu Sans, sans-serif !important;
+}
+.h4
+{
+    margin: 0;
+    text-align: center;
+    font-family: 'NotoSansGujarati', freeserif, DejaVu Sans, sans-serif !important;
+}
+.meta {
+    margin: 8px 0 12px;
+    text-align: right;
+    font-size: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #333;
+    padding: 6px;
+    vertical-align: top;
+}
+
+th {
+    background: #f1f1f1;
+}
+
+.text-right { text-align: right; }
+.small { font-size: 10px; }
+.summary { margin-top: 14px; width: 45%; margin-left: auto; }
+.summary td { border: 1px solid #333; padding: 5px; }
+.section-gap td { border: none; padding: 8px 0; }
+</style>
 </head>
 <body>
     @php
@@ -24,7 +71,7 @@
         $customerMobile = $firstOrder->customer->customer_mobile ?? '';
     @endphp
     <h2>Suvidha Water Suppliers</h2>
-    <h4>{{ $customerName }}{{ $customerMobile ? ' (MO. ' . $customerMobile . ')' : '' }}</h4>
+    <p class="h4">{{ $customerName }}{{ $customerMobile ? ' (MO. ' . $customerMobile . ')' : '' }}</p>
     <div class="meta">Generated: {{ $generatedAt->format('d-m-Y h:i A') }}</div>
 
     <table>
