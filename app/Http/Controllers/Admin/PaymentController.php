@@ -13,15 +13,30 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'order_id'    => ['required','integer','exists:order_master,order_id'],
+            'order_id'    => ['required','integer','min:0'],
             'paid_amount' => ['required','numeric','min:1'],
             'payment_date' => ['required','date'],
-            'payment_received_by' => ['required','integer','exists:payment_received_user,received_id'], // if linked
-        ]);
+            'payment_received_by' => ['required','integer','exists:payment_received_user,received_id'],
+            'customer_id' => ['nullable','integer'],
+         ]);
 
         /** @var OrderMaster $order */
-        $order = OrderMaster::findOrFail($data['order_id']);
-        $snap  = $order->dueSnapshot(); // base (from rent_amount/fallback) + extra
+        $order = null;
+        if ((int) $data['order_id'] > 0) {
+            $order = OrderMaster::findOrFail((int) $data['order_id']);
+        }
+
+        $customerId = (int) ($data['customer_id'] ?? ($order->customer_id ?? 0));
+        if ($customerId <= 0) {
+            return back()->with('error', 'Customer is required for overall payment entry.');
+        }
+
+
+        $customerId = (int) ($data['customer_id'] ?? $order->customer_id);
+        if ($customerId <= 0) {
+            $customerId = (int) $order->customer_id;
+        }
+
 
         $normalizeAmount = static function ($value): int {
             if (is_int($value) || is_float($value)) {
@@ -31,20 +46,38 @@ class PaymentController extends Controller
             return (int) round((float) preg_replace('/[^\d.-]/', '', (string) $value));
         };
 
-        $newPaid      = $normalizeAmount($data['paid_amount']);
-        $unpaidBefore = max(0, $normalizeAmount($snap['unpaid']));
+        $newPaid = $normalizeAmount($data['paid_amount']);
+
+        $customerUnpaid = 0;
+        $customerOrders = OrderMaster::notDeleted()
+            ->where('customer_id', $customerId)
+            ->get();
+
+        foreach ($customerOrders as $customerOrder) {
+            $customerSnap = $customerOrder->dueSnapshot();
+            $customerUnpaid += $normalizeAmount($customerSnap['unpaid'] ?? 0);
+        }
+
+        $overallPaidSoFar = $normalizeAmount(
+            OrderPayment::where('customer_id', $customerId)
+                ->where('order_id', 0)
+                ->sum('paid_amount')
+        );
+
+        $unpaidBefore = max(0, $customerUnpaid - $overallPaidSoFar);
+
 
         if ($newPaid > $unpaidBefore) {
             return back()->with('error', 'Paid amount cannot exceed current unpaid.');
         }
 
-        return DB::transaction(function () use ($order, $snap, $newPaid, $unpaidBefore, $request) {
-            $newUnpaid = max(0, $unpaidBefore - $newPaid);
+        return DB::transaction(function () use ($order, $customerId, $newPaid, $unpaidBefore, $request) {
+        $newUnpaid = max(0, $unpaidBefore - $newPaid);
 
             OrderPayment::create([
-                'customer_id'         => $order->customer_id,
-                'order_id'            => $order->order_id,
-                'total_amount'        => $snap['total_due'], // snapshot total at payment time
+                'customer_id'         => $customerId,
+                'order_id'            => $order ? $order->order_id : 0,
+                'total_amount'        => $unpaidBefore,
                 'paid_amount'         => $newPaid,
                 'unpaid_amount'       => $newUnpaid,
                 'payment_date'        => $request->payment_date,
@@ -61,12 +94,19 @@ class PaymentController extends Controller
         $order = OrderMaster::findOrFail($orderId);
         $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
 
-        $payments = OrderPayment::with('PaymentReceivedUser')->where('order_id', $orderId)
+        $payments = OrderPayment::with('PaymentReceivedUser')
+            ->where('customer_id', $customerId)
+            ->where(function ($q) use ($orderId) {
+                $q->where('order_id', $orderId)->orWhere('order_id', 0);
+            })
             ->orderBy('payment_id', 'asc')
             ->get();
            
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
+        $overallPaid = (float) OrderPayment::where('customer_id', $customerId)
+            ->where('order_id', 0)
+            ->sum('paid_amount');
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])
             ->where('customer_id', $customerId)
@@ -85,6 +125,9 @@ class PaymentController extends Controller
             $customerTotals['unpaid'] += (float) ($customerSnap['unpaid'] ?? 0);
         }
 
+        $customerTotals['paid'] += $overallPaid;
+        $customerTotals['unpaid'] = max(0, (float) $customerTotals['unpaid'] - $overallPaid);
+        
         return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
     }
 }

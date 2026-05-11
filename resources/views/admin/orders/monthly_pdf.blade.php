@@ -70,7 +70,7 @@ th {
         $customerName = $firstOrder->customer->customer_name ?? 'All Customers';
         $customerMobile = $firstOrder->customer->customer_mobile ?? '';
     @endphp
-    <h2>Suvidha Water Suppliers</h2>
+    <h2>સુવિધા વોટર સપ્લાયર્સ</h2>
     <p class="h4">{{ $customerName }}{{ $customerMobile ? ' (MO. ' . $customerMobile . ')' : '' }}</p>
     <div class="meta">Generated: {{ $generatedAt->format('d-m-Y h:i A') }}</div>
 
@@ -78,7 +78,7 @@ th {
         <thead>
             <tr>
                 <th style="width:11%">Tanker</th>
-                <th style="width:28%">Customer Name / Dates</th>
+                <th style="width:28%">Tanker Name / Dates</th>
                 <th style="width:14%">Tanker No</th>
                 <th style="width:7%">Months</th>
                 <th style="width:10%">Rent</th>
@@ -96,7 +96,7 @@ th {
                 @endphp
                 <tr>
                     <td>Tanker.{{ $i + 1 }}</td>
-                    <td>{{ $order->customer->customer_name ?? '-' }}<br><span class="small">{{ $schedule[0] ?? '-' }}</span></td>
+                    <td>{{ $order->tanker->tanker_name ?? '-' }}<br><span class="small">{{ $schedule[0] ?? '-' }}</span></td>
                     <td>{{ $order->tanker->tanker_code ?? '-' }}</td>
                     <td class="text-right">{{ $snap['months'] }}</td>
                     <td class="text-right">{{ number_format($snap['base']) }}</td>

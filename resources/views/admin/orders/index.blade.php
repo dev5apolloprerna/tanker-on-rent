@@ -351,6 +351,7 @@
     <form method="POST" action="{{ route('payments.store') }}" class="modal-content">
       @csrf
         <input type="hidden" name="order_id" id="pm_order_id">
+        <input type="hidden" name="customer_id" id="pm_customer_id">
 
       <div class="modal-header">
         <h5 class="modal-title" id="paymentModalTitle">Add Payment</h5>
@@ -517,7 +518,8 @@ document.getElementById('paymentModal').addEventListener('show.bs.modal', functi
   const customerName = btn.getAttribute('data-customer-name') || 'Customer';
 
 
-  document.getElementById('pm_order_id').value = orderId;
+  document.getElementById('pm_order_id').value = 0;
+  document.getElementById('pm_customer_id').value = customerId || '';
   document.getElementById('pm_unpaid').value   = '₹' + unpaid.toLocaleString('en-IN');
 
   const paidInput = document.querySelector('#paymentModal input[name="paid_amount"]');
