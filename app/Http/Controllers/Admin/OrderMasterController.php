@@ -20,106 +20,100 @@ class OrderMasterController extends Controller
 {
     // LIST
     public function index(Request $request)
-    {
-        $q = OrderMaster::notDeleted()->withSum('paymentMaster', 'paid_amount')
-            ->with(['customer', 'tanker','rentPrice']);
+{
+    $q = OrderMaster::notDeleted()
+        ->withSum('paymentMaster', 'paid_amount')
+        ->with(['customer', 'tanker', 'rentPrice']);
 
-        // Search (default: order_type, rent_type, reference_name, reference_mobile_no, tanker_location)
-        if ($request->filled('search')) {
-            $s = trim($request->search);
-            $q->where(function($x) use ($s) {
-                $x
-                    // ->where('order_type', 'like', "%{$s}%")
-                  ->where('rent_type', 'like', "%{$s}%")
-                  ->orWhere('reference_name', 'like', "%{$s}%")
-                  ->orWhere('reference_mobile_no', 'like', "%{$s}%")
-                  ->orWhere('tanker_location', 'like', "%{$s}%");
-            });
-        }
-
-        // Optional status filter by querystring ?status=1/0
-        if ($request->filled('status') && in_array($request->status, ['0','1'])) {
-            $q->where('iStatus', (int) $request->status);
-        }
-        if ($request->filled('isReceive') && in_array($request->isReceive, ['0','1'])) {
-            $q->where('isReceive', (int) $request->isReceive);
-        }
-        if ($request->filled('rent_type') && in_array($request->rent_type, ['daily','monthly'])) {
-            $q->where('rent_type', $request->rent_type);
-        }
-
-           $q->where(function($sub) {
-                $sub->where('isReceive', 1)
-                    ->orWhereHas('paymentMaster', function($pm) {
-                        // unpaid_amount > 0 means still pending, so keep those
-                        $pm->where('unpaid_amount', '>', 0);
-                    });
-            })
-            // exclude isReceive=0 with unpaid=0
-            ->whereDoesntHave('paymentMaster', function($pm) {
-                $pm->where('unpaid_amount', '=', 0)
-                   ->whereHas('order', function($order) {
-                       $order->where('isReceive', 0);
-                   });
-            });
-
-     $orders = $q->orderByDesc('order_id')->paginate(10)->withQueryString();
-
-        $customerIds = collect($orders->items())->pluck('customer_id')->map(fn ($id) => (int) $id)->unique()->values();
-        $overallPaymentsByCustomer = [];
-        if ($customerIds->isNotEmpty()) {
-            $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
-                ->where('order_id', 0)
-                ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
-                ->groupBy('customer_id')
-                ->pluck('total_paid', 'customer_id')
-                ->map(fn ($v) => (float) $v)
-                ->toArray();
-        }
-
-
-        $totalPaid = 0;
-        $totalUnpaid = 0;
-            
-        $customerPaymentSummary = [];
-
-        foreach ($orders as $o) {
-            $snap = $o->dueSnapshot();
-            $totalPaid += $snap['paid_sum'];
-            $totalUnpaid += $snap['unpaid'];
-
-            $customerId = (int) $o->customer_id;
-            if (!isset($customerPaymentSummary[$customerId])) {
-                $customerPaymentSummary[$customerId] = [
-                    'paid' => 0,
-                    'unpaid' => 0,
-                ];
-            }
-
-            $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
-            $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
-
-        }
-        
-        foreach ($customerPaymentSummary as $customerId => &$summary) {
-            $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
-            $summary['paid'] += $overallPaid;
-            $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
-            $totalPaid += $overallPaid;
-            $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
-        }
-        unset($summary);
-
-            
-        $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
-        $paymentUser = PaymentReceivedUser::notDeleted()
-            ->where(['iStatus'=> 1,'isDelete'=> 0])
-            ->select('received_id', 'name')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.orders.index', compact('orders','totalPaid','totalUnpaid','godowns','paymentUser','customerPaymentSummary'));
+    // Search
+    if ($request->filled('search')) {
+        $s = trim($request->search);
+        $q->where(function ($x) use ($s) {
+            $x->where('rent_type', 'like', "%{$s}%")
+              ->orWhere('reference_name', 'like', "%{$s}%")
+              ->orWhere('reference_mobile_no', 'like', "%{$s}%")
+              ->orWhere('tanker_location', 'like', "%{$s}%");
+        });
     }
+
+    // Status filter
+    if ($request->filled('status') && in_array($request->status, ['0', '1'])) {
+        $q->where('iStatus', (int) $request->status);
+    }
+
+    if ($request->filled('isReceive') && in_array($request->isReceive, ['0', '1'])) {
+        $q->where('isReceive', (int) $request->isReceive);
+    }
+
+    if ($request->filled('rent_type') && in_array($request->rent_type, ['daily', 'monthly'])) {
+        $q->where('rent_type', $request->rent_type);
+    }
+
+    $q->where(function ($sub) {
+        $sub->where('isReceive', 1)
+            ->orWhereHas('paymentMaster', function ($pm) {
+                $pm->where('unpaid_amount', '>', 0);
+            });
+    })
+    ->whereDoesntHave('paymentMaster', function ($pm) {
+        $pm->where('unpaid_amount', '=', 0)
+           ->whereHas('order', function ($order) {
+               $order->where('isReceive', 0);
+           });
+    });
+
+    $totalsOrders = (clone $q)->orderByDesc('order_id')->get();
+    $orders = $q->orderByDesc('order_id')->paginate(10)->withQueryString();
+
+    $totalPaid = 0;
+    $totalUnpaid = 0;
+    $customerPaymentSummary = [];
+
+    // Total summary from all filtered orders
+    foreach ($totalsOrders as $o) {
+        $snap = $o->dueSnapshot();
+
+        $totalPaid += (float) ($snap['paid_sum'] ?? 0);
+        $totalUnpaid += (float) ($snap['unpaid'] ?? 0);
+    }
+
+    // Customer summary from current page orders
+    foreach ($orders as $o) {
+        $snap = $o->dueSnapshot();
+
+        $customerId = (int) $o->customer_id;
+
+        if (!isset($customerPaymentSummary[$customerId])) {
+            $customerPaymentSummary[$customerId] = [
+                'paid' => 0,
+                'unpaid' => 0,
+            ];
+        }
+
+        $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+        $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
+    }
+
+    $godowns = GodownMaster::select('godown_id', 'Name')
+        ->where(['iStatus' => 1, 'isDelete' => 0])
+        ->orderBy('Name')
+        ->get();
+
+    $paymentUser = PaymentReceivedUser::notDeleted()
+        ->where(['iStatus' => 1, 'isDelete' => 0])
+        ->select('received_id', 'name')
+        ->orderBy('name')
+        ->get();
+
+    return view('admin.orders.index', compact(
+        'orders',
+        'totalPaid',
+        'totalUnpaid',
+        'godowns',
+        'paymentUser',
+        'customerPaymentSummary'
+    ));
+}
 
     // CREATE
     public function create()
@@ -180,7 +174,7 @@ class OrderMasterController extends Controller
             $advance = (int) round($order->advance_amount ?? 0);
             $advance = max(0, min($advance, $base)); // cap to base
 
-            OrderPayment::create([
+            /*OrderPayment::create([
                 'customer_id'   => $order->customer_id,
                 'order_id'      => $order->order_id,
                 'total_amount'  => $base,                  // snapshot base at creation
@@ -188,7 +182,21 @@ class OrderMasterController extends Controller
                 'unpaid_amount' => max(0, $base - $advance),
                 'iStatus'       => 1,
                 'isDelete'      => 0,
-            ]);
+            ]);*/
+             $isMonthlyRent = strtolower((string) RentPrice::where('rent_price_id', $order->rent_type)->value('rent_type')) === 'monthly';
+
+            if (! $isMonthlyRent) {
+                OrderPayment::create([
+                    'customer_id'   => $order->customer_id,
+                    'order_id'      => $order->order_id,
+                    'total_amount'  => $base,                  // snapshot base at creation
+                    'paid_amount'   => $advance,               // ✅ record advance as paid
+                    'unpaid_amount' => max(0, $base - $advance),
+                    'iStatus'       => 1,
+                    'isDelete'      => 0,
+                ]);
+            }
+
         return redirect()->route('orders.index')->with('success', 'Order added successfully.');
         });
 
@@ -264,7 +272,11 @@ class OrderMasterController extends Controller
             $targetAdvance = (int) round($order->advance_amount ?? 0);
             $targetAdvance = max(0, min($targetAdvance, $base)); // cap to base
 
-            if ($targetAdvance > $paidSoFar) {
+            $isMonthlyRent = strtolower((string) RentPrice::where('rent_price_id', $order->rent_type)->value('rent_type')) === 'monthly';
+
+            if (!$isMonthlyRent && $targetAdvance > $paidSoFar) 
+            {
+
                 // User increased advance → add a delta payment row
                 $delta = $targetAdvance - $paidSoFar;
                 // Compute current snapshot to store unpaid correctly in the ledger row

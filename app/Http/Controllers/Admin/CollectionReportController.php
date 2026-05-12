@@ -75,7 +75,7 @@ class CollectionReportController extends Controller
                 l.created_at     as tx_time,
                 l.daily_order_id as ref_id,
                 c.customer_name  as customer_name,
-                d.service_type   as service
+                NULL             as service
             ");
 
         // Order payments
@@ -135,7 +135,7 @@ class CollectionReportController extends Controller
                 l.created_at     as tx_time,
                 l.daily_order_id as ref_id,
                 c.customer_name  as customer_name,
-                d.service_type   as service
+                NULL             as service
             ");
 
         $dateExpr = DB::raw('COALESCE(DATE(p.payment_date), DATE(p.created_at))');
