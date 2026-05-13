@@ -219,6 +219,7 @@
                                               data-customer-id="{{ $o->customer_id }}"
                                               data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
                                               data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}"
+                                            data-rent-basis="{{ strtolower((string) ($o->rentPrice->rent_type ?? '')) }}"
                                               data-order-id-label="{{ $o->order_id }}"
                                               title="Add Payment">
                                               <i class="fa fa-inr"></i>
@@ -515,10 +516,11 @@ document.getElementById('paymentModal').addEventListener('show.bs.modal', functi
   const orderId = btn.getAttribute('data-order-id');
   const customerId = btn.getAttribute('data-customer-id');
   const unpaid  = Number(btn.getAttribute('data-unpaid') || 0);
+  const rentBasis = (btn.getAttribute('data-rent-basis') || '').toLowerCase();
   const customerName = btn.getAttribute('data-customer-name') || 'Customer';
 
 
-  document.getElementById('pm_order_id').value = 0;
+  document.getElementById('pm_order_id').value = orderId || 0;
   document.getElementById('pm_customer_id').value = customerId || '';
   document.getElementById('pm_unpaid').value   = '₹' + unpaid.toLocaleString('en-IN');
 
@@ -543,6 +545,10 @@ document.getElementById('paymentModal').addEventListener('show.bs.modal', functi
   url = url.replace(':id', orderId);
   if (customerId) {
     url += (url.includes('?') ? '&' : '?') + 'customer_id=' + encodeURIComponent(customerId);
+  }
+
+  if (rentBasis) {
+    url += (url.includes('?') ? '&' : '?') + 'rent_basis=' + encodeURIComponent(rentBasis);
   }
 
   fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
