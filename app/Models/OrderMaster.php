@@ -50,7 +50,7 @@ class OrderMaster extends Model
                     ->withDefault(['rent_type' => '—']); // prevents null errors
     }
 
-    public function paymentMaster() { return $this->hasOne(OrderPayment::class, 'order_id', 'order_id'); }
+    public function paymentMaster() { return $this->hasMany(OrderPayment::class, 'order_id', 'order_id'); }
 
  public function dueSnapshot(?Carbon $asOf = null): array
 {
@@ -62,7 +62,12 @@ class OrderMaster extends Model
     $rate = max(0, $rate);
 
     // 2) DAILY vs MONTHLY
-    $rtype   = strtolower(trim((string) $this->rent_type));
+        $rentTypeLabel = $this->rentPrice->rent_type
+        ?? RentPrice::where('rent_price_id', $this->rent_type)->value('rent_type')
+        ?? $this->rent_type;
+
+    $rtype   = strtolower(trim((string) $rentTypeLabel));
+    
     $isDaily = preg_match('/\b(daily|per[\s\-_]?day|daywise|day\s*wise|day\-wise)\b/', $rtype) === 1
                || in_array($rtype, ['day','per day'], true);
 

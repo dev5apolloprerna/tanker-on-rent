@@ -31,13 +31,6 @@ class PaymentController extends Controller
             return back()->with('error', 'Customer is required for overall payment entry.');
         }
 
-
-        $customerId = (int) ($data['customer_id'] ?? $order->customer_id);
-        if ($customerId <= 0) {
-            $customerId = (int) $order->customer_id;
-        }
-
-
         $normalizeAmount = static function ($value): int {
             if (is_int($value) || is_float($value)) {
                 return (int) round((float) $value);
@@ -76,7 +69,8 @@ class PaymentController extends Controller
 
             OrderPayment::create([
                 'customer_id'         => $customerId,
-                'order_id'            => $order ? $order->order_id : 0,
+                // This endpoint records customer-level collection, not tanker-level payment.
+                'order_id'            => 0,
                 'total_amount'        => $unpaidBefore,
                 'paid_amount'         => $newPaid,
                 'unpaid_amount'       => $newUnpaid,
