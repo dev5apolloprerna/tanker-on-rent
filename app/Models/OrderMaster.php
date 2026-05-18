@@ -92,6 +92,9 @@ class OrderMaster extends Model
     $paidSumAttr = 'payment_master_sum_paid_amount';
     $paidSum = (int) ($this->{$paidSumAttr} ?? $this->paymentMaster()->sum('paid_amount'));
 
+    $advancePaid = max(0, (int) ($this->advance_amount ?? 0));
+    $paidSum = max($paidSum, $advancePaid);
+    
     // 5) Totals
     if ($isDaily) {
         // DAILY: charge per inclusive day

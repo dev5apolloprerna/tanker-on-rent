@@ -124,4 +124,15 @@ class PaymentController extends Controller
         
         return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
     }
+     public function destroy(Request $request, $paymentId)
+    {
+        $payment = OrderPayment::where('payment_id', $paymentId)
+            ->where('isDelete', 0)
+            ->firstOrFail();
+
+        $payment->isDelete = 1;
+        $payment->save();
+
+        return back()->with('success', 'Payment deleted successfully.');
+    }
 }

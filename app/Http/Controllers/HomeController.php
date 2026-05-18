@@ -16,6 +16,7 @@ use App\Models\EmployeeMaster;
 use App\Models\GodownMaster;
 use App\Models\VendorMaster;
 use App\Models\OrderMaster;
+use App\Models\OrderPayment;
 use App\Models\DailyExpence;
 use App\Models\EmpAttendance;
 
@@ -100,14 +101,42 @@ class HomeController extends Controller
             ->count();
             
             $orders = OrderMaster::notDeleted()->with(['customer', 'tanker'])->get();
+            $customerIds = $orders->pluck('customer_id')->filter()->unique()->values();
+            $overallPaymentsByCustomer = [];
+            if ($customerIds->isNotEmpty()) {
+                $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
+                    ->where('order_id', 0)
+                    ->where('isDelete', 0)
+                    ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
+                    ->groupBy('customer_id')
+                    ->pluck('total_paid', 'customer_id')
+                    ->map(fn ($v) => (float) $v)
+                    ->toArray();
+            }
 
             $totalPaid = 0;
             $totalUnpaid = 0;
-            
+
+            $customerTotals = [];
             foreach ($orders as $o) {
                 $snap = $o->dueSnapshot();
-                $totalPaid += $snap['paid_sum'];
-                $totalUnpaid += $snap['unpaid'];
+                $totalPaid += (float) ($snap['paid_sum'] ?? 0);
+                $totalUnpaid += (float) ($snap['unpaid'] ?? 0);
+
+                $cid = (int) $o->customer_id;
+                if (!isset($customerTotals[$cid])) {
+                    $customerTotals[$cid] = ['paid' => 0, 'unpaid' => 0];
+                }
+                $customerTotals[$cid]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+                $customerTotals[$cid]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
+            }
+
+            foreach ($customerTotals as $customerId => $summary) {
+                $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
+                if ($overallPaid > 0) {
+                    $totalPaid += $overallPaid;
+                    $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
+                }
             }
 
 

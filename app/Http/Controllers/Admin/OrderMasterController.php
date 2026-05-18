@@ -388,16 +388,26 @@ class OrderMasterController extends Controller
             ->get();
 
         $orderIds = $orders->pluck('order_id')->all();
-        $payments = collect();
-        if ($orderIds) {
-            $payments = \DB::table('order_payment_master')
-                ->select('payment_id','order_id','paid_amount','created_at')
-                ->whereIn('order_id', $orderIds)
-                ->where('isDelete', 0)
-                ->orderBy('created_at','asc')
-                ->get()
-                ->groupBy('order_id');
-        }
+       $customerPaymentHistory = \DB::table('order_payment_master as p')
+            ->leftJoin('payment_received_user as pru', 'pru.received_id', '=', 'p.payment_received_by')
+            ->select(
+                'p.payment_id',
+                'p.order_id',
+                'p.total_amount',
+                'p.paid_amount',
+                'p.unpaid_amount',
+                'p.payment_date',
+                'p.created_at',
+                'pru.name as payment_received_by_name'
+            )
+            ->where('p.customer_id', $customerId)
+            ->where('p.isDelete', 0)
+            ->orderBy('p.payment_id', 'asc')
+            ->get();
+
+        $payments = $customerPaymentHistory
+            ->whereIn('order_id', $orderIds)
+            ->groupBy('order_id');
 
         $totals = ['orders_count'=>0, 'total_due'=>0, 'paid'=>0, 'unpaid'=>0];
         $totals['orders_count'] = $orders->count();
@@ -417,6 +427,14 @@ class OrderMasterController extends Controller
             if ((int)$o->isReceive === 1) $notReceivedCount++; else $receivedCount++;
         }
 
+        $overallPaid = (float) $customerPaymentHistory
+            ->where('order_id', 0)
+            ->sum('paid_amount');
+        if ($overallPaid > 0) {
+            $totals['paid'] += $overallPaid;
+            $totals['unpaid'] = max(0, (float)$totals['unpaid'] - $overallPaid);
+        }
+
         $meta = [
             'daily_count'       => $dailyCount,
             'monthly_count'     => $monthlyCount,
@@ -428,6 +446,7 @@ class OrderMasterController extends Controller
             'customer' => $customer,
             'orders'   => $orders,
             'payments' => $payments,
+            'customerPaymentHistory' => $customerPaymentHistory,
             'totals'   => $totals,
             'meta'     => $meta,
         ]);
@@ -465,6 +484,7 @@ class OrderMasterController extends Controller
         $grandTotal = 0;
         $grandPaid = 0;
         $grandUnpaid = 0;
+        $customerSummary = [];
 
         foreach ($orders as $o) {
             $snap = $o->dueSnapshot();
@@ -484,6 +504,33 @@ class OrderMasterController extends Controller
             $grandTotal += (float) $snap['total_due'];
             $grandPaid += (float) $snap['paid_sum'];
             $grandUnpaid += (float) $snap['unpaid'];
+
+            $cid = (int) $o->customer_id;
+            if (!isset($customerSummary[$cid])) {
+                $customerSummary[$cid] = ['paid' => 0, 'unpaid' => 0];
+            }
+            $customerSummary[$cid]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+            $customerSummary[$cid]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
+        }
+
+        if (!empty($customerSummary)) {
+            $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', array_keys($customerSummary))
+                ->where('order_id', 0)
+                ->where('isDelete', 0)
+                ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
+                ->groupBy('customer_id')
+                ->pluck('total_paid', 'customer_id')
+                ->map(fn ($v) => (float) $v)
+                ->toArray();
+
+            foreach ($customerSummary as $customerId => $summary) {
+                $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
+                if ($overallPaid > 0) {
+                    $grandPaid += $overallPaid;
+                    $grandUnpaid = max(0, $grandUnpaid - $overallPaid);
+                }
+            }
+
         }
 
        $fontPath = $_SERVER['DOCUMENT_ROOT'] . '/tanker_on_rent/fonts/NotoSansGujarati-Regular.ttf';
@@ -522,4 +569,3 @@ class OrderMasterController extends Controller
 
     }
 }
-

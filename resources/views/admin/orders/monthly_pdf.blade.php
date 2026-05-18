@@ -17,7 +17,7 @@
 @endif
 
 * {
-    font-family: 'NotoSansGujarati', freeserif, DejaVu Sans, sans-serif !important;
+    font-family: 'NotoSansGujarati', DejaVu Sans, sans-serif !important;
 }
 
 body {
@@ -30,7 +30,7 @@ h2, h4 {
     text-align: center;
     font-family: 'NotoSansGujarati', freeserif, DejaVu Sans, sans-serif !important;
 }
-.h4
+.h4 
 {
     margin: 0;
     text-align: center;
@@ -57,6 +57,15 @@ th {
     background: #f1f1f1;
 }
 
+.h2 {
+    margin: 0;
+    text-align: center;
+    color: #ff8c00;
+    font-size: 20px;
+    font-family: 'NotoSansGujarati', DejaVu Sans, sans-serif !important;
+    font-weight: normal;
+}
+
 .text-right { text-align: right; }
 .small { font-size: 10px; }
 .summary { margin-top: 14px; width: 45%; margin-left: auto; }
@@ -70,7 +79,8 @@ th {
         $customerName = $firstOrder->customer->customer_name ?? 'All Customers';
         $customerMobile = $firstOrder->customer->customer_mobile ?? '';
     @endphp
-    <h2>સુવિધા વોટર સપ્લાયર્સ</h2>
+        <div class="h2">સુવિધા વોટર સપ્લાયર્સ</div>
+
     <p class="h4">{{ $customerName }}{{ $customerMobile ? ' (MO. ' . $customerMobile . ')' : '' }}</p>
     <div class="meta">Generated: {{ $generatedAt->format('d-m-Y h:i A') }}</div>
 
@@ -83,8 +93,6 @@ th {
                 <th style="width:7%">Months</th>
                 <th style="width:10%">Rent</th>
                 <th style="width:10%">Total Rent</th>
-                <th style="width:10%">Paid</th>
-                <th style="width:10%">Unpaid</th>
             </tr>
         </thead>
         <tbody>
@@ -101,19 +109,17 @@ th {
                     <td class="text-right">{{ $snap['months'] }}</td>
                     <td class="text-right">{{ number_format($snap['base']) }}</td>
                     <td class="text-right">{{ number_format($snap['total_due']) }}</td>
-                    <td class="text-right">{{ number_format($snap['paid_sum']) }}</td>
-                    <td class="text-right">{{ number_format($snap['unpaid']) }}</td>
                 </tr>
                 @foreach(array_slice($schedule, 1) as $date)
                     <tr>
                         <td></td>
                         <td class="small">{{ $date }}</td>
-                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td>
                     </tr>
                 @endforeach
-                <tr class="section-gap"><td colspan="8"></td></tr>
+                <tr class="section-gap"><td colspan="6"></td></tr>
             @empty
-                <tr><td colspan="8" style="text-align:center">No monthly orders found.</td></tr>
+                <tr><td colspan="6" style="text-align:center">No monthly orders found.</td></tr>
             @endforelse
         </tbody>
     </table>

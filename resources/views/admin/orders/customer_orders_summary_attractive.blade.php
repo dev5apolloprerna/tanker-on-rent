@@ -157,22 +157,24 @@
                           <th style="width:60px;">ID</th>
                           <th>Date</th>
                           <th class="text-end">Amount</th>
+                          <th>Received By</th>
                         </tr>
                       </thead>
                       <tbody>
                         @forelse($plist as $pm)
                           <tr>
                             <td>#{{ $pm->payment_id }}</td>
-                            <td>{{ \Carbon\Carbon::parse($pm->created_at)->format('d-m-Y H:i') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($pm->payment_date ?? $pm->created_at)->format('d-m-Y H:i') }}</td>
                             <td class="text-end">{{ $fmt($pm->paid_amount) }}</td>
+                            <td>{{ $pm->payment_received_by_name ?? '-' }}</td>
                           </tr>
                         @empty
-                          <tr><td colspan="3" class="text-muted">No payments recorded for this order.</td></tr>
+                          <tr><td colspan="4" class="text-muted">No payments recorded for this order.</td></tr>
                         @endforelse
                       </tbody>
                       <tfoot>
                         <tr class="table-light">
-                          <th colspan="2" class="text-end">Paid Total</th>
+                          <th colspan="3" class="text-end">Paid Total</th>
                           <th class="text-end">{{ $fmt($s['paid_sum'] ?? 0) }}</th>
                         </tr>
                       </tfoot>

@@ -93,7 +93,7 @@
                 <ul class="list-group list-group-flush">
                   @foreach($plist as $pm)
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span>{{ \Carbon\Carbon::parse($pm->created_at)->format('d-m-Y H:i') }}</span>
+                      <span>{{ \Carbon\Carbon::parse($pm->payment_date ?? $pm->created_at)->format('d-m-Y H:i') }}</span>
                       <strong>{{ $fmt($pm->paid_amount) }}</strong>
                     </li>
                   @endforeach
@@ -102,6 +102,36 @@
             </tr>
           @endif
         @endforeach
+      </tbody>
+    </table>
+  </div>
+   <hr class="my-3">
+  <h6 class="mb-2">Payment History (Customer)</h6>
+  <div class="table-responsive" style="max-height: 30vh; overflow-y: auto;">
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Order #</th>
+          <th>Date</th>
+          <th class="text-end">Paid</th>
+          <th class="text-end">Unpaid</th>
+          <th>Received By</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse(($customerPaymentHistory ?? collect()) as $ph)
+          <tr>
+            <td>#{{ $ph->payment_id }}</td>
+            <td>{{ (int)$ph->order_id === 0 ? 'Overall' : ('#'.$ph->order_id) }}</td>
+            <td>{{ \Carbon\Carbon::parse($ph->payment_date ?? $ph->created_at)->format('d-m-Y H:i') }}</td>
+            <td class="text-end text-success">{{ $fmt($ph->paid_amount) }}</td>
+            <td class="text-end {{ (float)$ph->unpaid_amount > 0 ? 'text-danger' : 'text-success' }}">{{ $fmt($ph->unpaid_amount) }}</td>
+            <td>{{ $ph->payment_received_by_name ?? '-' }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="6" class="text-center text-muted">No payment history found.</td></tr>
+        @endforelse
       </tbody>
     </table>
   </div>
