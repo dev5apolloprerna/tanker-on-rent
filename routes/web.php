@@ -165,7 +165,8 @@ Route::prefix('admin')->group(function () {
 Route::post('payments/store', [PaymentController::class, 'store'])->name('payments.store');
 Route::get('orders/{order}/payments/history', [PaymentController::class, 'history'])
         ->name('payments.history');
-
+Route::post('payments/{payment}/delete', [PaymentController::class, 'destroy'])
+        ->name('payments.delete');
 
 Route::middleware(['auth'])
     ->prefix('admin')

@@ -10,59 +10,67 @@
 
             {{-- Alerts --}}
             @include('common.alert')
-        <div class="card">
-             <div class="card-header">
-            <h5> Order Listing
-            </h5>
-          </div>
-          <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-10">
-                    <form method="GET" action="{{ route('orders.index') }}" class="d-flex">
-                        <input type="text" class="form-control me-2" name="search" value="{{ request('search') }}"
-                               placeholder="Order Type / Rent Type / Ref Name / Ref Mobile / Location">
-                        <select class="form-select me-2" name="rent_type">
-                            <option value="">-- Rent Type --</option>
-                            <option value="daily"   {{ request('rent_type') == 'daily' ? 'selected' : '' }}>Daily</option>
-                            <option value="monthly" {{ request('rent_type') == 'monthly' ? 'selected' : '' }}>Monthly</option>
-                        </select>
-                        <select class="form-select me-2" name="isReceive">
-                            <option value="">-- Tanker Status --</option>
-                            <option value="1"   {{ request('isReceive') == '1' ? 'selected' : '' }}>Not Received</option>
-                            <option value="0" {{ request('isReceive') == '0' ? 'selected' : '' }}>Received</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary me-2">Search</button>
-                        <a href="{{ route('orders.index') }}" class="btn btn-light">Reset</a>
-                    </form>
-                </div>
-                <div class="col-md-2 text-end">
-                    <a href="{{ route('orders.create') }}" class="btn btn-sm btn-primary">
-                        <i class="far fa-plus"></i> Add New
-                    </a>
-                    <!-- @if(request('rent_type') === 'monthly') -->
-                      
-                    <!-- @endif -->
-                </div>
-            </div>
 
-            {{-- Top bar: bulk delete + search --}}
-            <div class="row mb-3">
-                <div class="col-md-8">
-                    <button id="btnBulkDelete" class="btn btn-sm btn-danger">
-                        <i class="far fa-trash-alt"></i> Bulk Delete
-                    </button>
-                      <a href="{{ route('orders.monthly-pdf', request()->query()) }}" class="btn btn-sm btn-danger ms-1">
-                        <i class="fas fa-file-pdf"></i> PDF
-                      </a>
+            <div class="card">
+                <div class="card-header">
+                    <h5>Order Listing</h5>
                 </div>
-               
-                <div class="col-md-2">
-                    <div class="text-end mt-2">
-                    <span class="badge bg-success me-2" style="font-size: small;">Total Paid: {{ $totalPaid }}</span>
-                    <span class="badge bg-danger me-2" style="font-size: small;">Total Unpaid: {{ $totalUnpaid }} </span>
+
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-10">
+                            <form method="GET" action="{{ route('orders.index') }}" class="d-flex">
+                                <input type="text" class="form-control me-2" name="search" value="{{ request('search') }}"
+                                       placeholder="Order Type / Rent Type / Ref Name / Ref Mobile / Location">
+
+                                <select class="form-select me-2" name="rent_type">
+                                    <option value="">-- Rent Type --</option>
+                                    <option value="daily" {{ request('rent_type') == 'daily' ? 'selected' : '' }}>Daily</option>
+                                    <option value="monthly" {{ request('rent_type') == 'monthly' ? 'selected' : '' }}>Monthly</option>
+                                </select>
+
+                                <select class="form-select me-2" name="isReceive">
+                                    <option value="">-- Tanker Status --</option>
+                                    <option value="1" {{ request('isReceive') == '1' ? 'selected' : '' }}>Not Received</option>
+                                    <option value="0" {{ request('isReceive') == '0' ? 'selected' : '' }}>Received</option>
+                                </select>
+
+                                <button type="submit" class="btn btn-primary me-2">Search</button>
+                                <a href="{{ route('orders.index') }}" class="btn btn-light">Reset</a>
+                            </form>
+                        </div>
+
+                        <div class="col-md-2 text-end">
+                            <a href="{{ route('orders.create') }}" class="btn btn-sm btn-primary">
+                                <i class="far fa-plus"></i> Add New
+                            </a>
+                        </div>
                     </div>
-                </div>
-            </div>
+
+                    {{-- Top bar --}}
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <button id="btnBulkDelete" class="btn btn-sm btn-danger">
+                                <i class="far fa-trash-alt"></i> Bulk Delete
+                            </button>
+
+                            <a href="{{ route('orders.monthly-pdf', request()->query()) }}" class="btn btn-sm btn-danger ms-1">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                        </div>
+
+                        <div class="col-md-2">
+                            <div class="text-end mt-2">
+                                <span class="badge bg-success me-2" style="font-size: small;">
+                                    Total Paid: {{ $totalPaid }}
+                                </span>
+                                <span class="badge bg-danger me-2" style="font-size: small;">
+                                    Total Unpaid: {{ $totalUnpaid }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table align-middle table-striped">
                             <thead>
@@ -73,161 +81,166 @@
                                     <th>Customer (Total)</th>
                                     <th>Tanker No</th>
                                     <th>Tanker Name</th>
-                                    <!-- <th>Advance</th>
-                                    <th>Rent</th>
-                                    <th>Ref. Name</th>
-                                    <th>Ref. Mobile</th> -->
                                     <th>Tanker Location</th>
-                                    <!-- <th>Created At</th> {{-- must be shown --}} -->
                                     <th>Rent</th>
                                     <th>M/D</th>
                                     <th>Total</th>
                                     <th>Tanker Paid</th>
                                     <th>Tanker Unpaid</th>
                                     <th>Tanker Status</th>
-                                    <th >Action</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
+
                             <tbody>
                                 @forelse($orders as $o)
-                                @php
-                                    $snap = $o->dueSnapshot();
-                                  
-                                    $durationText = $snap['rent_basis'] === 'daily'
-                                        ? "{$snap['days_used']} day" . ($snap['days_used'] > 1 ? 's' : '')
-                                        : "{$snap['months']} month" . ($snap['months'] > 1 ? 's' : '');
+                                    @php
+                                        $snap = $o->dueSnapshot();
 
-                                    // If you only want a numeric "days" value when daily:
-                                    $durationDays = $snap['rent_basis'] === 'daily' ? (int)$snap['days_used'] : '';
+                                        $durationText = $snap['rent_basis'] === 'daily'
+                                            ? "{$snap['days_used']} day" . ($snap['days_used'] > 1 ? 's' : '')
+                                            : "{$snap['months']} month" . ($snap['months'] > 1 ? 's' : '');
 
-                                  @endphp
+                                        $durationDays = $snap['rent_basis'] === 'daily' ? (int) $snap['days_used'] : '';
+
+                                        $cSummary = $customerPaymentSummary[$o->customer_id] ?? [
+                                            'paid' => 0,
+                                            'unpaid' => 0
+                                        ];
+                                    @endphp
+
                                     <tr data-id="{{ $o->order_id }}">
-                                        <td><input type="checkbox" class="row-check" value="{{ $o->order_id }}"></td>
-                                        <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
-                                        <td>{{ $o->rentPrice->rent_type }}</td>
-                                        @php
-                                            $cSummary = $customerPaymentSummary[$o->customer_id] ?? ['paid' => 0, 'unpaid' => 0];
-                                          @endphp
                                         <td>
-                                          <a href="javascript:void(0)"
-                                            class="text-decoration-underline"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#customerOrdersModal"
-                                            data-customer-id="{{ $o->customer_id }}"
-                                            data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}">
-                                            {{ $o->customer->customer_name ?? $o->customer_id }}
-                                          </a>
-                                          <div class="small text-muted mt-1">
-                                            <span class="text-success">Paid: ₹{{ number_format($cSummary['paid']) }}</span>
-                                            <br>
-                                            <span class="{{ $cSummary['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">Unpaid: ₹{{ number_format($cSummary['unpaid']) }}</span>
-                                          </div>
+                                            <input type="checkbox" class="row-check" value="{{ $o->order_id }}">
                                         </td>
 
-                                        <!-- <td>{{ $o->customer->customer_name ?? $o->customer_id }}</td> -->
+                                        <td>{{ \Carbon\Carbon::parse($o->rent_start_date)->format('d-m-Y') }}</td>
+
+                                        <td>{{ $o->rentPrice->rent_type }}</td>
+
+                                        <td>
+                                            <a href="javascript:void(0)"
+                                               class="text-decoration-underline"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#customerOrdersModal"
+                                               data-customer-id="{{ $o->customer_id }}"
+                                               data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}">
+                                                {{ $o->customer->customer_name ?? $o->customer_id }}
+                                            </a>
+
+                                            <div class="small text-muted mt-1">
+                                                <span class="text-success">
+                                                    Paid: ₹{{ number_format($cSummary['paid']) }}
+                                                </span>
+                                                <br>
+                                                <span class="{{ $cSummary['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">
+                                                    Unpaid: ₹{{ number_format($cSummary['unpaid']) }}
+                                                </span>
+                                            </div>
+                                        </td>
+
                                         <td>{{ $o->tanker->tanker_code ?? '-' }}</td>
                                         <td>{{ $o->tanker->tanker_name ?? '-' }}</td>
-                                        
-                                        <!-- <td>{{ number_format($o->advance_amount) }}</td>
-                                        <td>{{ number_format($o->rent_amount) }}</td>
-                                        <td>{{ $o->reference_name }}</td>
-                                        <td>{{ $o->reference_mobile_no }}</td> -->
                                         <td>{{ $o->tanker_location }}</td>
-                                        <!-- <td>{{ \Carbon\Carbon::parse($o->created_at)->format('d M Y H:i') }}</td> -->
-                                        
-                                          <td>₹{{ number_format($snap['base']) }}</td>
+
+                                        <td>₹{{ number_format($snap['base']) }}</td>
+
                                         <td>
-                                          <!--<strong>₹{{ number_format($snap['total_due']) }}</strong>-->
-                                          <div class="small text-muted">
-                                            @if($snap['rent_basis'] === 'daily')
-                                            
-                                              ({{ $snap['days_used'] }} day{{ $snap['days_used'] > 1 ? 's' : '' }})
-                                            @else
-                                              ({{ $snap['months'] }} month{{ $snap['months'] > 1 ? 's' : '' }})
-                                            @endif
-                                          </div>
+                                            <div class="small text-muted">
+                                                @if($snap['rent_basis'] === 'daily')
+                                                    ({{ $snap['days_used'] }} day{{ $snap['days_used'] > 1 ? 's' : '' }})
+                                                @else
+                                                    ({{ $snap['months'] }} month{{ $snap['months'] > 1 ? 's' : '' }})
+                                                @endif
+                                            </div>
                                         </td>
-                                          <td><strong>₹{{ number_format($snap['total_due']) }}</strong></td>
-                                          <td>₹{{ number_format($snap['paid_sum']) }}</td>
-                                          <td class="{{ $snap['unpaid']>0 ? 'text-danger fw-bold' : '' }}">
+
+                                        <td>
+                                            <strong>₹{{ number_format($snap['total_due']) }}</strong>
+                                        </td>
+
+                                        <td>₹{{ number_format($snap['paid_sum']) }}</td>
+
+                                        <td class="{{ $snap['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">
                                             ₹{{ number_format($snap['unpaid']) }}
-                                          </td>
-
-                                        <td>
-                                         @if($o->isReceive == 1)
-                                            {{-- Was linking to toggle — now opens modal --}}
-                                            <button
-                                              type="button"
-                                              class="btn btn-sm btn-danger"
-                                              data-bs-toggle="modal"
-                                              data-bs-target="#receivedModal"
-                                              data-order-id="{{ $o->order_id }}"
-                                              data-extra-amount="{{ number_format($snap['total_due']) }}"
-                                              data-extra-day="{{ $durationDays }}"                 {{-- e.g., 8 (empty for monthly) --}}
-                                              data-rent-basis="{{ $snap['rent_basis'] }}"         {{-- 'daily' or 'monthly' --}}
-                                              data-duration-text="{{ $durationText }}"         {{-- e.g., "(8 days)" or "(2 months)" --}}
-                                              title="Mark as Received">
-                                              Not Received
-                                            </button>
-                                          @else
-                                            {{-- Keep existing toggle back to Not Received --}}
-                                            <a href="{{ route('orders.toggle-receive', $o->order_id) }}"
-                                              class="btn btn-sm btn-success"
-                                              onclick="return confirm('Are you sure you want to mark as NOT RECEIVED?')">
-                                              Received
-                                            </a>
-                                          @endif
-
-
                                         </td>
-                                       <!--  <td>
-                                            <span class="badge bg-{{ $o->iStatus ? 'success' : 'secondary' }} toggle-status"
-                                                  style="cursor:pointer" data-id="{{ $o->order_id }}">
-                                                {{ $o->iStatus ? 'Active' : 'Inactive' }}
-                                            </span>
-                                        </td> -->
+
                                         <td>
-                                            <a href="{{ route('orders.edit', $o->order_id) }}" class="btn btn-sm btn-primary text-white " title="Edit">
+                                            @if($o->isReceive == 1)
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#receivedModal"
+                                                    data-order-id="{{ $o->order_id }}"
+                                                    data-extra-amount="{{ number_format($snap['total_due']) }}"
+                                                    data-extra-day="{{ $durationDays }}"
+                                                    data-rent-basis="{{ $snap['rent_basis'] }}"
+                                                    data-duration-text="{{ $durationText }}"
+                                                    title="Mark as Received">
+                                                    Not Received
+                                                </button>
+                                            @else
+                                                <a href="{{ route('orders.toggle-receive', $o->order_id) }}"
+                                                   class="btn btn-sm btn-success"
+                                                   onclick="return confirm('Are you sure you want to mark as NOT RECEIVED?')">
+                                                    Received
+                                                </a>
+                                            @endif
+                                        </td>
+
+                                        <td>
+                                            <a href="{{ route('orders.edit', $o->order_id) }}"
+                                               class="btn btn-sm btn-primary text-white"
+                                               title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="javascript:void(0)" class="btn btn-sm btn-light text-white btnDelete" title="Delete" data-id="{{ $o->order_id }}">
+
+                                            <a href="javascript:void(0)"
+                                               class="btn btn-sm btn-light text-white btnDelete"
+                                               title="Delete"
+                                               data-id="{{ $o->order_id }}">
                                                 <i class="fas fa-trash-alt"></i>
                                             </a>
-                                            @if(($o->rentPrice->rent_type ?? '') === 'Monthly') 
-                                              <a href="{{ route('orders.monthly-pdf', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
-                                                class="btn btn-sm btn-danger"
-                                                title="Customer PDF" target="_blank">
-                                                <i class="fas fa-file-pdf"></i>
-                                              </a>
+
+                                            @if(($o->rentPrice->rent_type ?? '') === 'Monthly')
+                                                <a href="{{ route('orders.monthly-pdf', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
+                                                   class="btn btn-sm btn-danger"
+                                                   title="Customer PDF"
+                                                   target="_blank">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </a>
                                             @endif
 
                                             <button
-                                              class="btn btn-sm btn-info"
-                                              data-bs-toggle="modal"
-                                              data-bs-target="#tankerDetailsModal"
-                                              data-order-id="{{ $o->order_id }}"
-                                              title="Tanker Details">
-                                              <i class="fas fa-truck"></i>
+                                                type="button"
+                                                class="btn btn-sm btn-info"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#tankerDetailsModal"
+                                                data-order-id="{{ $o->order_id }}"
+                                                title="Tanker Details">
+                                                <i class="fas fa-truck"></i>
                                             </button>
-
 
                                             <button
-                                              class="btn btn-sm btn-warning"
-                                              data-bs-toggle="modal"
-                                              data-bs-target="#paymentModal"
-                                              data-order-id="{{ $o->order_id }}"
-                                              data-customer-id="{{ $o->customer_id }}"
-                                              data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
-                                              data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}"
-                                              data-order-id-label="{{ $o->order_id }}"
-                                              title="Add Payment">
-                                              <i class="fa fa-inr"></i>
+                                                type="button"
+                                                class="btn btn-sm btn-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#paymentModal"
+                                                data-order-id="{{ $o->order_id }}"
+                                                data-customer-id="{{ $o->customer_id }}"
+                                                data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
+                                                data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}"
+                                                data-rent-basis="{{ $snap['rent_basis'] }}"
+                                                title="Add Payment">
+                                                <i class="fa fa-inr"></i>
                                             </button>
-
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="14" class="text-center">No orders found.</td></tr>
+                                    <tr>
+                                        <td colspan="14" class="text-center">No orders found.</td>
+                                    </tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -236,6 +249,7 @@
                     <div class="d-flex justify-content-center mt-3">
                         {{ $orders->links() }}
                     </div>
+
                 </div>
             </div>
 
@@ -245,352 +259,501 @@
 
 {{-- Customer Orders & Payments Modal --}}
 <div class="modal fade" id="customerOrdersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
 
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerOrdersTitle">Customer Orders & Payments</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
-      <div class="modal-header">
-        <h5 class="modal-title" id="customerOrdersTitle">Customer Orders & Payments</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+            <div class="modal-body" id="customerOrdersBody">
+                <div class="text-center py-5">Loading customer orders…</div>
+            </div>
 
-      <div class="modal-body" id="customerOrdersBody">
-        <div class="text-center py-5">
-          Loading customer orders…
+            <div class="modal-footer">
+                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
+            </div>
+
         </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
-      </div>
-
     </div>
-  </div>
 </div>
-
 
 {{-- Tanker Details Modal --}}
 <div class="modal fade" id="tankerDetailsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
 
-      <div class="modal-header">
-        <h5 class="modal-title">Tanker Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
+            <div class="modal-header">
+                <h5 class="modal-title">Tanker Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-      <div class="modal-body" id="tankerDetailsBody">
-        <div class="text-center py-4">Loading details…</div>
-      </div>
+            <div class="modal-body" id="tankerDetailsBody">
+                <div class="text-center py-4">Loading details…</div>
+            </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
-      </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
+            </div>
 
+        </div>
     </div>
-  </div>
 </div>
-
 
 {{-- Mark as Received Modal --}}
 <div class="modal fade" id="receivedModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form method="POST" class="modal-content" id="receivedForm">
-      @csrf
-        <input type="hidden" name="extra_amount" id="rcv_extra_amount">  {{-- hidden --}}
-  <input type="hidden" name="extra_day"     id="rcv_extra_day">
-  <input type="hidden" name="rent_basis"    id="rcv_rent_basis">
-  <input type="hidden" name="duration_text" id="rcv_duration_text"> {{-- optional --}}
+    <div class="modal-dialog">
+        <form method="POST" class="modal-content" id="receivedForm">
+            @csrf
 
-      <div class="modal-header">
-        <h5 class="modal-title">Mark as Received</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
+            <input type="hidden" name="extra_amount" id="rcv_extra_amount">
+            <input type="hidden" name="extra_day" id="rcv_extra_day">
+            <input type="hidden" name="rent_basis" id="rcv_rent_basis">
+            <input type="hidden" name="duration_text" id="rcv_duration_text">
 
-      <div class="modal-body">
-        <div class="mb-2">
-          <label class="form-label">Received Date <span class="text-danger">*</span></label>
-          <input type="date" name="received_at" id="received_at" class="form-control" value="{{ old('received_at', date('Y-m-d')) }}">
-        </div>
+            <div class="modal-header">
+                <h5 class="modal-title">Mark as Received</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-        <div class="mb-3">
-          <label class="form-label">Select Godown <span class="text-danger">*</span></label>
-          <select name="godown_id" class="form-select" required>
-            <option value="">-- Choose --</option>
-            @foreach($godowns as $g)
-              <option value="{{ $g->godown_id }}">{{ $g->Name }}</option>
-            @endforeach
-          </select>
-        </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">
+                        Received Date <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" name="received_at" id="received_at" class="form-control"
+                           value="{{ old('received_at', date('Y-m-d')) }}">
+                </div>
 
-        {{-- Optional: a note or extra fields (received date, remarks) --}}
-      </div>
+                <div class="mb-3">
+                    <label class="form-label">
+                        Select Godown <span class="text-danger">*</span>
+                    </label>
 
-      <div class="modal-footer">
-        <button class="btn btn-primary" type="submit">Save</button>
-        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </form>
-  </div>
-</div>
+                    <select name="godown_id" class="form-select" required>
+                        <option value="">-- Choose --</option>
+                        @foreach($godowns as $g)
+                            <option value="{{ $g->godown_id }}">{{ $g->Name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
 
-<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="card">
-    <div class="card-body">
-
-    <div id="pm_history">
-    <div class="text-center py-4" id="pm_history_loader" style="display:none;">
-      Loading history...
+            <div class="modal-footer">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
     </div>
-  </div>
-
-  <hr class="my-3">
-
-  {{-- Add Payment form --}}
-    <form method="POST" action="{{ route('payments.store') }}" class="modal-content">
-      @csrf
-        <input type="hidden" name="order_id" id="pm_order_id">
-        <input type="hidden" name="customer_id" id="pm_customer_id">
-
-      <div class="modal-header">
-        <h5 class="modal-title" id="paymentModalTitle">Add Payment</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body row">
-
-        <div class="col-6 mb-2">
-          <label class="form-label">Payment Date <span class="text-danger">*</span></label>
-          <input type="date" name="payment_date" id="payment_date" class="form-control" value="{{ old('payment_date', date('Y-m-d')) }}">
-        </div>
-
-        <div class="col-6 mb-2">
-          <label class="form-label">Select Received BY <span class="text-danger">*</span></label>
-          <select name="payment_received_by" class="form-select" required>
-            <option value="">-- Choose --</option>
-            @foreach($paymentUser as $p)
-              <option value="{{ $p->received_id }}">{{ $p->name }}</option>
-            @endforeach
-          </select>
-        </div>
-        
-
-        <div class="col-6 mb-2">
-          <label class="form-label">Due Amount</label>
-          <input type="text" id="pm_unpaid" class="form-control" readonly>
-        </div>
-
-        <div class="col-6 mb-2">
-          <label class="form-label">Paid Amount <span class="text-danger">*</span></label>
-          <input type="number" min="1" step="1" name="paid_amount" class="form-control" required>
-          <small class="text-muted">Cannot exceed current unpaid.</small>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-primary" type="submit">Save Payment</button>
-        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
-      </div>
-    </form>
-  </div>
 </div>
 
+{{-- Payment Modal --}}
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalTitle">Add Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+
+                {{-- Payment History --}}
+                <div id="pm_history">
+                    <div class="text-center py-4" id="pm_history_loader" style="display:none;">
+                        Loading history...
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                {{-- Add Payment Form --}}
+                <form method="POST" action="{{ route('payments.store') }}" id="paymentForm">
+                    @csrf
+
+                    <input type="hidden" name="order_id" id="pm_order_id">
+                    <input type="hidden" name="customer_id" id="pm_customer_id">
+
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label">
+                                Payment Date <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" name="payment_date" id="payment_date" class="form-control"
+                                   value="{{ old('payment_date', date('Y-m-d')) }}">
+                        </div>
+
+                        <div class="col-6 mb-2">
+                            <label class="form-label">
+                                Select Received BY <span class="text-danger">*</span>
+                            </label>
+
+                            <select name="payment_received_by" class="form-select" required>
+                                <option value="">-- Choose --</option>
+                                @foreach($paymentUser as $p)
+                                    <option value="{{ $p->received_id }}">{{ $p->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-6 mb-2">
+                            <label class="form-label">Due Amount</label>
+                            <input type="text" id="pm_unpaid" class="form-control" readonly>
+                        </div>
+
+                        <div class="col-6 mb-2">
+                            <label class="form-label">
+                                Paid Amount <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" min="1" step="1" name="paid_amount" class="form-control" required>
+                            <small class="text-muted">Cannot exceed current unpaid.</small>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button class="btn btn-primary" type="submit">Save Payment</button>
+                        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </form>
+
+            </div>
+
+        </div>
+    </div>
 </div>
-</div>
+
 @endsection
 
 @section('scripts')
 <script>
-// for mark as received modal
-document.getElementById('receivedModal').addEventListener('show.bs.modal', function (event) {
-  const btn  = event.relatedTarget;
-  const id   = btn.dataset.orderId;
+let currentPaymentModalRentBasis = '';
 
-  // set form action
-  const form = document.getElementById('receivedForm');
-  let url = "{{ route('orders.mark-received', ':id') }}";
-  form.action = url.replace(':id', id);
+document.addEventListener('DOMContentLoaded', function () {
 
-  // grab data from button
-  const extraAmount  = btn.dataset.extraAmount || '0';
-  const extraDay     = btn.dataset.extraDay || '';
-  const rentBasis    = btn.dataset.rentBasis || '';
-  const durationText = btn.dataset.durationText || '';
+    // Mark as received modal
+    const receivedModal = document.getElementById('receivedModal');
 
-  // set hidden inputs
-  document.getElementById('rcv_extra_amount').value  = extraAmount;
-  document.getElementById('rcv_extra_day').value     = extraDay;
-  document.getElementById('rcv_rent_basis').value    = rentBasis;
-  document.getElementById('rcv_duration_text').value = durationText;
+    if (receivedModal) {
+        receivedModal.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
 
-  // (optional) show a preview somewhere
-  const previewEl = document.getElementById('rcv_extra_amount_view');
-  if (previewEl) previewEl.value = '₹' + Number(extraAmount).toLocaleString('en-IN');
+            const id = btn.dataset.orderId;
+
+            const form = document.getElementById('receivedForm');
+            let url = "{{ route('orders.mark-received', ':id') }}";
+            form.action = url.replace(':id', id);
+
+            document.getElementById('rcv_extra_amount').value = btn.dataset.extraAmount || '0';
+            document.getElementById('rcv_extra_day').value = btn.dataset.extraDay || '';
+            document.getElementById('rcv_rent_basis').value = btn.dataset.rentBasis || '';
+            document.getElementById('rcv_duration_text').value = btn.dataset.durationText || '';
+        });
+    }
+
+    // Confirm before toggling
+    document.querySelectorAll('.toggle-receive-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const isNotReceived = this.dataset.current === '1';
+            const orderId = this.dataset.orderId;
+            const nextState = isNotReceived ? 'Received' : 'Not Received';
+            const msg = `Are you sure you want to mark Order #${orderId} as ${nextState}?`;
+
+            if (confirm(msg)) {
+                this.submit();
+            }
+        });
+    });
+
+    // Payment form validation
+    const paymentModal = document.getElementById('paymentModal');
+
+    if (paymentModal) {
+        paymentModal.addEventListener('submit', function (event) {
+            const form = event.target;
+
+            if (!form.matches('#paymentForm')) {
+                return;
+            }
+
+            const dueText = document.getElementById('pm_unpaid')?.value || '0';
+            const due = Number(String(dueText).replace(/[^0-9.]/g, '')) || 0;
+            const paid = Number(form.querySelector('input[name="paid_amount"]')?.value || 0);
+
+            if (paid > due) {
+                event.preventDefault();
+                alert('Paid amount cannot exceed current unpaid.');
+            }
+        });
+
+        paymentModal.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+
+            const orderId = btn.getAttribute('data-order-id');
+            const customerId = btn.getAttribute('data-customer-id');
+            const unpaid = Number(btn.getAttribute('data-unpaid') || 0);
+            const customerName = btn.getAttribute('data-customer-name') || 'Customer';
+
+            currentPaymentModalRentBasis = (btn.getAttribute('data-rent-basis') || '').toLowerCase();
+
+            document.getElementById('pm_order_id').value = orderId || 0;
+            document.getElementById('pm_customer_id').value = customerId || '';
+            document.getElementById('pm_unpaid').value = '₹' + unpaid.toLocaleString('en-IN');
+
+            const paidInput = document.querySelector('#paymentModal input[name="paid_amount"]');
+
+            if (paidInput) {
+                paidInput.max = unpaid > 0 ? String(unpaid) : '';
+                paidInput.value = '';
+            }
+
+            const payTitle = document.getElementById('paymentModalTitle');
+
+            if (payTitle) {
+                payTitle.textContent = `Add Payment - ${customerName} (Order #${orderId})`;
+            }
+
+            loadPaymentHistory(orderId, customerId, currentPaymentModalRentBasis);
+        });
+    }
+
+    // Tanker details modal
+    const tankerDetailsModal = document.getElementById('tankerDetailsModal');
+
+    if (tankerDetailsModal) {
+        tankerDetailsModal.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+
+            const id = btn.getAttribute('data-order-id');
+            const body = document.getElementById('tankerDetailsBody');
+
+            body.innerHTML = '<div class="text-center py-4">Loading details…</div>';
+
+            let url = "{{ route('orders.tanker-details', ':id') }}";
+            url = url.replace(':id', id);
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(r => r.text())
+            .then(html => {
+                body.innerHTML = html;
+            })
+            .catch(() => {
+                body.innerHTML = '<div class="alert alert-danger">Unable to load tanker details.</div>';
+            });
+        });
+    }
+
+    // Customer orders modal
+    const customerOrdersModal = document.getElementById('customerOrdersModal');
+
+    if (customerOrdersModal) {
+        customerOrdersModal.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+
+            const customerId = btn.getAttribute('data-customer-id');
+            const customerName = btn.getAttribute('data-customer-name') || 'Customer';
+            const body = document.getElementById('customerOrdersBody');
+            const title = document.getElementById('customerOrdersTitle');
+
+            if (title) {
+                title.textContent = `Customer Orders & Payments - ${customerName}`;
+            }
+
+            body.innerHTML = '<div class="text-center py-5">Loading customer orders…</div>';
+
+            let url = "{{ route('orders.orders-summary', ':id') }}";
+            url = url.replace(':id', customerId);
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(r => r.text())
+            .then(html => {
+                body.innerHTML = html;
+            })
+            .catch(() => {
+                body.innerHTML = '<div class="alert alert-danger">Unable to load customer orders.</div>';
+            });
+        });
+    }
+
 });
 
+$(function () {
+    const CSRF = '{{ csrf_token() }}';
 
-// confirm before toggling
-    document.querySelectorAll('.toggle-receive-form').forEach(function(form){
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    const isNotReceived = this.dataset.current === '1';
-    const orderId = this.dataset.orderId;
-    const nextState = isNotReceived ? 'Received' : 'Not Received';
-    const msg = `Are you sure you want to mark Order #${orderId} as ${nextState}?`;
-    if (confirm(msg)) this.submit();
-  });
-});
+    // Check all
+    $('#checkAll').on('change', function () {
+        $('.row-check').prop('checked', $(this).is(':checked'));
+    });
 
-$(function(){
-    const CSRF='{{ csrf_token() }}';
+    // Bulk delete
+    $('#btnBulkDelete').on('click', function () {
+        let ids = $('.row-check:checked').map(function () {
+            return $(this).val();
+        }).get();
 
-    // check all
-    $('#checkAll').on('change', function(){ $('.row-check').prop('checked', $(this).is(':checked')); });
+        if (!ids.length) {
+            return alert('Please select at least one row.');
+        }
 
-    // bulk delete (soft)
-    $('#btnBulkDelete').on('click', function(){
-        let ids = $('.row-check:checked').map(function(){ return $(this).val(); }).get();
-        if(!ids.length) return alert('Please select at least one row.');
-        if(!confirm('Are you sure you want to delete selected records?')) return;
+        if (!confirm('Are you sure you want to delete selected records?')) {
+            return;
+        }
 
         $.ajax({
             url: "{{ route('orders.bulk-delete') }}",
             type: 'POST',
-            data: { ids: ids, _token: CSRF },
-            success: function(r){ if(r.status) location.reload(); else alert(r.message || 'Failed to delete.'); },
-            error: function(){ alert('Something went wrong.'); }
+            data: {
+                ids: ids,
+                _token: CSRF
+            },
+            success: function (r) {
+                if (r.status) {
+                    location.reload();
+                } else {
+                    alert(r.message || 'Failed to delete.');
+                }
+            },
+            error: function () {
+                alert('Something went wrong.');
+            }
         });
     });
 
-    // single delete (soft)
-    $('.btnDelete').on('click', function(){
+    // Single order delete
+    $('.btnDelete').on('click', function () {
         let id = $(this).data('id');
-        if(!confirm('Do you really want to delete this record?')) return;
+
+        if (!confirm('Do you really want to delete this record?')) {
+            return;
+        }
 
         $.ajax({
             url: "{{ route('orders.destroy', ':id') }}".replace(':id', id),
             type: 'POST',
-            data: { _method: 'DELETE', _token: CSRF },
-            success: function(r){ if(r.status) location.reload(); else alert('Failed to delete.'); },
-            error: function(){ alert('Something went wrong.'); }
+            data: {
+                _method: 'DELETE',
+                _token: CSRF
+            },
+            success: function (r) {
+                if (r.status) {
+                    location.reload();
+                } else {
+                    alert('Failed to delete.');
+                }
+            },
+            error: function () {
+                alert('Something went wrong.');
+            }
         });
     });
 
-    // toggle status
-    $('.toggle-status').on('click', function(){
-        let id = $(this).data('id'), el=$(this);
+    // Toggle status
+    $('.toggle-status').on('click', function () {
+        let id = $(this).data('id');
+        let el = $(this);
+
         $.ajax({
             url: "{{ route('orders.change-status', ':id') }}".replace(':id', id),
             type: 'POST',
-            data: { _token: CSRF },
-            success: function(r){
-                if(r.status){
-                    if(r.new_status==1){ el.removeClass('bg-secondary').addClass('bg-success').text('Active'); }
-                    else { el.removeClass('bg-success').addClass('bg-secondary').text('Inactive'); }
+            data: {
+                _token: CSRF
+            },
+            success: function (r) {
+                if (r.status) {
+                    if (r.new_status == 1) {
+                        el.removeClass('bg-secondary').addClass('bg-success').text('Active');
+                    } else {
+                        el.removeClass('bg-success').addClass('bg-secondary').text('Inactive');
+                    }
                 }
             }
         });
     });
-});
 
-// for payment 
+    // Payment history delete button
+    $(document).on('click', '.js-delete-payment-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
 
-document.getElementById('paymentModal').addEventListener('submit', function (event) {
-  const form = event.target;
-  if (!form.matches('form')) return;
+        let btn = $(this);
+        let action = btn.data('action');
+        let token = btn.data('token');
 
-  const dueText = document.getElementById('pm_unpaid')?.value || '0';
-  const due = Number(String(dueText).replace(/[^0-9.]/g, '')) || 0;
-  const paid = Number(form.querySelector('input[name="paid_amount"]')?.value || 0);
+        if (!confirm('Delete this payment record?')) {
+            return false;
+        }
 
-  if (paid > due) {
-    event.preventDefault();
-    alert('Paid amount cannot exceed current unpaid.');
-  }
-});
+        btn.prop('disabled', true).text('Deleting...');
 
-document.getElementById('paymentModal').addEventListener('show.bs.modal', function (event) {
-  const btn = event.relatedTarget;
-  const orderId = btn.getAttribute('data-order-id');
-  const customerId = btn.getAttribute('data-customer-id');
-  const unpaid  = Number(btn.getAttribute('data-unpaid') || 0);
-  const customerName = btn.getAttribute('data-customer-name') || 'Customer';
+        $.ajax({
+            url: action,
+            type: 'POST',
+            data: {
+                _token: token
+            },
+            success: function (res) {
+                let orderId = $('#pm_order_id').val();
+                let customerId = $('#pm_customer_id').val();
 
+                loadPaymentHistory(orderId, customerId, currentPaymentModalRentBasis);
+            },
+            error: function () {
+                alert('Unable to delete payment. Please try again.');
+                btn.prop('disabled', false).text('Delete');
+            }
+        });
 
-  document.getElementById('pm_order_id').value = 0;
-  document.getElementById('pm_customer_id').value = customerId || '';
-  document.getElementById('pm_unpaid').value   = '₹' + unpaid.toLocaleString('en-IN');
-
-  const paidInput = document.querySelector('#paymentModal input[name="paid_amount"]');
-  if (paidInput) {
-    paidInput.max = unpaid > 0 ? String(unpaid) : '';
-    paidInput.value = '';
-  }
-
-  const payTitle = document.getElementById('paymentModalTitle');
-  if (payTitle) payTitle.textContent = `Add Payment - ${customerName} (Order #${orderId})`;
-
-  const historyWrap   = document.getElementById('pm_history');
-  const historyLoader = document.getElementById('pm_history_loader');
-
-  // show loader
-  if (historyLoader) historyLoader.style.display = 'block';
-  historyWrap.innerHTML = historyLoader ? historyLoader.outerHTML : 'Loading...';
-
-  // Build URL from named route pattern
-  let url = "{{ route('payments.history', ':id') }}";
-  url = url.replace(':id', orderId);
-  if (customerId) {
-    url += (url.includes('?') ? '&' : '?') + 'customer_id=' + encodeURIComponent(customerId);
-  }
-
-  fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-    .then(r => r.text())
-    .then(html => {
-      historyWrap.innerHTML = html;
-    })
-    .catch(() => {
-      historyWrap.innerHTML = '<div class="alert alert-danger">Unable to load payment history.</div>';
+        return false;
     });
 });
 
-  document.getElementById('tankerDetailsModal').addEventListener('show.bs.modal', function (event) {
-    const btn   = event.relatedTarget;
-    const id    = btn.getAttribute('data-order-id');
-    const body  = document.getElementById('tankerDetailsBody');
+function loadPaymentHistory(orderId, customerId, rentBasis) {
+    const historyWrap = document.getElementById('pm_history');
 
-    body.innerHTML = '<div class="text-center py-4">Loading details…</div>';
+    if (!historyWrap) {
+        return;
+    }
 
-    let url = "{{ route('orders.tanker-details', ':id') }}";
-    url = url.replace(':id', id);
+    historyWrap.innerHTML = '<div class="text-center py-4">Loading history...</div>';
 
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(r => r.text())
-      .then(html => { body.innerHTML = html; })
-      .catch(() => { body.innerHTML = '<div class="alert alert-danger">Unable to load tanker details.</div>'; });
-  });
+    let url = "{{ route('payments.history', ':id') }}";
+    url = url.replace(':id', orderId);
 
+    if (customerId) {
+        url += (url.includes('?') ? '&' : '?') + 'customer_id=' + encodeURIComponent(customerId);
+    }
 
-document.getElementById('customerOrdersModal').addEventListener('show.bs.modal', function (event) {
-  const btn = event.relatedTarget;
-  const customerId = btn.getAttribute('data-customer-id');
-  const customerName = btn.getAttribute('data-customer-name') || 'Customer';
-  const body = document.getElementById('customerOrdersBody');
+    if (rentBasis) {
+        url += (url.includes('?') ? '&' : '?') + 'rent_basis=' + encodeURIComponent(rentBasis);
+    }
 
-  const title = document.getElementById('customerOrdersTitle');
-  if (title) title.textContent = `Customer Orders & Payments - ${customerName}`;
-
-  body.innerHTML = '<div class="text-center py-5">Loading customer orders…</div>';
-
-  let url = "{{ route('orders.orders-summary', ':id') }}".replace(':id', customerId);
-
-  fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
     .then(r => r.text())
-    .then(html => body.innerHTML = html)
-    .catch(() => body.innerHTML = '<div class="alert alert-danger">Unable to load customer orders.</div>');
-});
-
-
+    .then(html => {
+        historyWrap.innerHTML = html;
+    })
+    .catch(() => {
+        historyWrap.innerHTML = '<div class="alert alert-danger">Unable to load payment history.</div>';
+    });
+}
 </script>
 @endsection

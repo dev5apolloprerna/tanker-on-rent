@@ -54,6 +54,7 @@ class PaymentController extends Controller
         $overallPaidSoFar = $normalizeAmount(
             OrderPayment::where('customer_id', $customerId)
                 ->where('order_id', 0)
+                ->where('isDelete', 0)
                 ->sum('paid_amount')
         );
 
@@ -89,7 +90,7 @@ class PaymentController extends Controller
         $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
 
         $payments = OrderPayment::with('PaymentReceivedUser')
-            ->where('customer_id', $customerId)
+            ->where('customer_id', $customerId)->where('isDelete', 0)
             ->where(function ($q) use ($orderId) {
                 $q->where('order_id', $orderId)->orWhere('order_id', 0);
             })
@@ -99,7 +100,7 @@ class PaymentController extends Controller
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
         $overallPaid = (float) OrderPayment::where('customer_id', $customerId)
-            ->where('order_id', 0)
+            ->where('order_id', 0)->where('isDelete', 0)
             ->sum('paid_amount');
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])
@@ -123,5 +124,16 @@ class PaymentController extends Controller
         $customerTotals['unpaid'] = max(0, (float) $customerTotals['unpaid'] - $overallPaid);
         
         return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
+    }
+     public function destroy(Request $request, $paymentId)
+    {
+        $payment = OrderPayment::where('payment_id', $paymentId)
+            ->where('isDelete', 0)
+            ->firstOrFail();
+
+        $payment->isDelete = 1;
+        $payment->save();
+
+        return back()->with('success', 'Payment deleted successfully.');
     }
 }

@@ -35,7 +35,10 @@
             <tbody>
                 @forelse($customerOrders as $co)
                     @php
-                        $cs = $co->customer_snapshot ?? ['paid_sum' => 0, 'unpaid' => 0];
+                        $cs = $co->customer_snapshot ?? [
+                            'paid_sum' => 0,
+                            'unpaid' => 0
+                        ];
                     @endphp
 
                     <tr class="{{ (int) $co->order_id === (int) $order->order_id ? 'table-warning' : '' }}">
@@ -121,7 +124,7 @@
 </div>
 
 <div class="table-responsive card">
-    <table class="table table-sm table-bordered align-middle">
+    <table class="table table-sm table-bordered align-middle mb-0">
         <thead>
             <tr>
                 <th>#</th>
@@ -130,6 +133,7 @@
                 <th>Paid</th>
                 <th>Unpaid (After Row)</th>
                 <th>Payment Received By</th>
+                <th>Action</th>
             </tr>
         </thead>
 
@@ -139,7 +143,7 @@
                     <td>{{ $p->payment_id }}</td>
 
                     <td>
-                        {{ \Carbon\Carbon::parse($p->created_at)->format('d-M-Y H:i') }}
+                        {{ \Carbon\Carbon::parse($p->payment_date)->format('d-M-Y H:i') }}
                     </td>
 
                     <td>
@@ -157,10 +161,20 @@
                     <td>
                         {{ $p->PaymentReceivedUser->name ?? '-' }}
                     </td>
+
+                    <td>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger js-delete-payment-btn"
+                            data-action="{{ route('payments.delete', $p->payment_id) }}"
+                            data-token="{{ csrf_token() }}">
+                            Delete
+                        </button>
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center">
+                    <td colspan="7" class="text-center">
                         No payments yet.
                     </td>
                 </tr>
