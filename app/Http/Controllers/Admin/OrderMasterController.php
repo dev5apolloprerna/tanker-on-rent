@@ -180,7 +180,7 @@ class OrderMasterController extends Controller
             $advance = (int) round($order->advance_amount ?? 0);
             $advance = max(0, min($advance, $base)); // cap to base
 
-            OrderPayment::create([
+            /*OrderPayment::create([
                 'customer_id'   => $order->customer_id,
                 'order_id'      => $order->order_id,
                 'total_amount'  => $base,                  // snapshot base at creation
@@ -188,7 +188,7 @@ class OrderMasterController extends Controller
                 'unpaid_amount' => max(0, $base - $advance),
                 'iStatus'       => 1,
                 'isDelete'      => 0,
-            ]);
+            ]);*/
         return redirect()->route('orders.index')->with('success', 'Order added successfully.');
         });
 

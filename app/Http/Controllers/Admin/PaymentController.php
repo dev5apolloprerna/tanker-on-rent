@@ -131,8 +131,8 @@ class PaymentController extends Controller
             ->where('isDelete', 0)
             ->firstOrFail();
 
-        $payment->isDelete = 1;
-        $payment->save();
+        $payment->delete();
+        // $payment->save();
 
         return back()->with('success', 'Payment deleted successfully.');
     }
