@@ -54,7 +54,6 @@ class PaymentController extends Controller
         $overallPaidSoFar = $normalizeAmount(
             OrderPayment::where('customer_id', $customerId)
                 ->where('order_id', 0)
-                ->where('isDelete', 0)
                 ->sum('paid_amount')
         );
 
@@ -90,7 +89,7 @@ class PaymentController extends Controller
         $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
 
         $payments = OrderPayment::with('PaymentReceivedUser')
-            ->where('customer_id', $customerId)->where('isDelete', 0)
+            ->where('customer_id', $customerId)
             ->where(function ($q) use ($orderId) {
                 $q->where('order_id', $orderId)->orWhere('order_id', 0);
             })
@@ -100,7 +99,7 @@ class PaymentController extends Controller
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
         $overallPaid = (float) OrderPayment::where('customer_id', $customerId)
-            ->where('order_id', 0)->where('isDelete', 0)
+            ->where('order_id', 0)
             ->sum('paid_amount');
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])
