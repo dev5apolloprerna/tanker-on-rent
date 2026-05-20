@@ -65,50 +65,48 @@ class OrderMasterController extends Controller
 
      $orders = $q->orderByDesc('order_id')->paginate(10)->withQueryString();
 
-        $customerIds = collect($orders->items())->pluck('customer_id')->map(fn ($id) => (int) $id)->unique()->values();
-        $overallPaymentsByCustomer = [];
-        if ($customerIds->isNotEmpty()) {
-            $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
-                ->where('order_id', 0)
-                ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
-                ->groupBy('customer_id')
-                ->pluck('total_paid', 'customer_id')
-                ->map(fn ($v) => (float) $v)
-                ->toArray();
-        }
+$customerIds = collect($orders->items())->pluck('customer_id')->map(fn ($id) => (int) $id)->unique()->values();
+$overallPaymentsByCustomer = [];
+if ($customerIds->isNotEmpty()) {
+    $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
+        ->where('order_id', 0)
+        ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
+        ->groupBy('customer_id')
+        ->pluck('total_paid', 'customer_id')
+        ->map(fn ($v) => (float) $v)
+        ->toArray();
+}
 
+$totalPaid = 0;
+$totalUnpaid = 0;
+    
+$customerPaymentSummary = [];
 
-        $totalPaid = 0;
-        $totalUnpaid = 0;
-            
-        $customerPaymentSummary = [];
+foreach ($orders as $o) {
+    $snap = $o->dueSnapshot();
+    $totalPaid += $snap['paid_sum'];
+    $totalUnpaid += $snap['unpaid'];
 
-        foreach ($orders as $o) {
-            $snap = $o->dueSnapshot();
-            $totalPaid += $snap['paid_sum'];
-            $totalUnpaid += $snap['unpaid'];
+    $customerId = (int) $o->customer_id;
+    if (!isset($customerPaymentSummary[$customerId])) {
+        $customerPaymentSummary[$customerId] = [
+            'paid' => 0,
+            'unpaid' => 0,
+        ];
+    }
 
-            $customerId = (int) $o->customer_id;
-            if (!isset($customerPaymentSummary[$customerId])) {
-                $customerPaymentSummary[$customerId] = [
-                    'paid' => 0,
-                    'unpaid' => 0,
-                ];
-            }
+    $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+    $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
+}
 
-            $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
-            $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
-
-        }
-        
-        foreach ($customerPaymentSummary as $customerId => &$summary) {
-            $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
-            $summary['paid'] += $overallPaid;
-            $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
-            $totalPaid += $overallPaid;
-            $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
-        }
-        unset($summary);
+foreach ($customerPaymentSummary as $customerId => &$summary) {
+    $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
+    $summary['paid'] += $overallPaid;
+    $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
+    $totalPaid += $overallPaid;
+    $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
+}
+unset($summary);
 
             
         $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
