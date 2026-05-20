@@ -19,7 +19,7 @@
             </div>
         </div>
     </div>
-
+    <div id="pm_current_unpaid" data-value="{{ (float) ($customerTotals['unpaid'] ?? 0) }}" hidden></div>
     <div class="table-responsive card mb-3">
         <table class="table table-sm table-bordered align-middle mb-0">
             <thead>

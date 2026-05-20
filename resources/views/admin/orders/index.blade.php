@@ -750,6 +750,22 @@ function loadPaymentHistory(orderId, customerId, rentBasis) {
     .then(r => r.text())
     .then(html => {
         historyWrap.innerHTML = html;
+          const parser = document.createElement('div');
+        parser.innerHTML = html;
+        const unpaidValue = Number(parser.querySelector('#pm_current_unpaid')?.getAttribute('data-value') || 0);
+
+        const unpaidInput = document.getElementById('pm_unpaid');
+        if (unpaidInput) {
+            unpaidInput.value = '₹' + unpaidValue.toLocaleString('en-IN');
+        }
+
+        const paidInput = document.getElementById('pm_paid_amount');
+        if (paidInput) {
+            paidInput.max = unpaidValue > 0 ? String(unpaidValue) : '';
+            if (Number(paidInput.value || 0) > unpaidValue) {
+                paidInput.value = unpaidValue > 0 ? String(unpaidValue) : '';
+            }
+        }
     })
     .catch(() => {
         historyWrap.innerHTML = '<div class="alert alert-danger">Unable to load payment history.</div>';
