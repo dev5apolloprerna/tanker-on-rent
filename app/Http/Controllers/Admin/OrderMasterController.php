@@ -69,7 +69,7 @@ $customerIds = collect($orders->items())->pluck('customer_id')->map(fn ($id) => 
 $overallPaymentsByCustomer = [];
 if ($customerIds->isNotEmpty()) {
     $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
-        ->where('order_id', 0)->where('isDelete', 0)
+        ->where('order_id', 0)
         ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
         ->groupBy('customer_id')
         ->pluck('total_paid', 'customer_id')
@@ -269,7 +269,7 @@ unset($summary);
                 $snapTotal = $order->dueSnapshot()['total_due']; // base + extra as of now
                 $newUnpaid = max(0, $snapTotal - ($paidSoFar + $delta));
 
-               /* OrderPayment::create([
+                OrderPayment::create([
                     'customer_id'   => $order->customer_id,
                     'order_id'      => $order->order_id,
                     'total_amount'  => $snapTotal,
@@ -277,7 +277,7 @@ unset($summary);
                     'unpaid_amount' => $newUnpaid,
                     'iStatus'       => 1,
                     'isDelete'      => 0,
-                ]);*/
+                ]);
             }
         return redirect()->route('orders.index')->with('success', 'Order updated successfully.');
         });

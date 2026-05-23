@@ -50,14 +50,10 @@ class OrderMaster extends Model
                     ->withDefault(['rent_type' => '—']); // prevents null errors
     }
 
-   // public function paymentMaster() { return $this->hasMany(OrderPayment::class, 'order_id', 'order_id'); }
-    public function paymentMaster()
-    {
-        return $this->hasMany(OrderPayment::class, 'order_id', 'order_id')
-            ->where('isDelete', 0);
-    }
-     public function dueSnapshot(?Carbon $asOf = null): array
-    {
+    public function paymentMaster() { return $this->hasMany(OrderPayment::class, 'order_id', 'order_id'); }
+
+ public function dueSnapshot(?Carbon $asOf = null): array
+{
     // 1) Resolve rate
     $rate = (int) ($this->rent_amount ?? 0);
     if ($rate <= 0) {
