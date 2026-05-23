@@ -53,8 +53,7 @@ class PaymentController extends Controller
 
         $overallPaidSoFar = $normalizeAmount(
             OrderPayment::where('customer_id', $customerId)
-                ->where('order_id', 0)
-                ->where('isDelete', 0)
+                ->where('order_id', 0)->where('isDelete', 0)
                 ->sum('paid_amount')
         );
 
@@ -90,9 +89,9 @@ class PaymentController extends Controller
         $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
 
         $payments = OrderPayment::with('PaymentReceivedUser')
-            ->where('customer_id', $customerId)->where('isDelete', 0)
+            ->where('customer_id', $customerId)
             ->where(function ($q) use ($orderId) {
-                $q->where('order_id', $orderId)->orWhere('order_id', 0);
+                $q->where('order_id', $orderId)->where('isDelete', 0)->orWhere('order_id', 0);
             })
             ->orderBy('payment_id', 'asc')
             ->get();
