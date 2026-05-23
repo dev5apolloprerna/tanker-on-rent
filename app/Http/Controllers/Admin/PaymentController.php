@@ -99,7 +99,7 @@ class PaymentController extends Controller
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
         $overallPaid = (float) OrderPayment::where('customer_id', $customerId)
-            ->where('order_id', 0)
+            ->where('order_id', 0)->where('isDelete', 0)
             ->sum('paid_amount');
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])

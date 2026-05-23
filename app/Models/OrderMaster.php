@@ -129,10 +129,4 @@ class OrderMaster extends Model
         'months'     => $isDaily ? 0 : $months, // monthly blocks we charge
     ];
 }
-
-
-
-
-
-        
 }
