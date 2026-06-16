@@ -90,6 +90,7 @@ class PaymentController extends Controller
 
         $payments = OrderPayment::with('PaymentReceivedUser')
             ->where('customer_id', $customerId)
+            ->where('isDelete', 0)
             ->where(function ($q) use ($orderId) {
                 $q->where('order_id', $orderId)->orWhere('order_id', 0);
             })
@@ -126,12 +127,26 @@ class PaymentController extends Controller
     }
      public function destroy(Request $request, $paymentId)
     {
+
         $payment = OrderPayment::where('payment_id', $paymentId)
             ->where('isDelete', 0)
-            ->firstOrFail();
+            ->first();
+
+        if (! $payment) {
+            $message = 'Payment record was already deleted or could not be found.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 404);
+            }
+
+            return back()->with('error', $message);
+        }
 
         $payment->delete();
-        // $payment->save();
+        
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['message' => 'Payment deleted successfully.']);
+        }
 
         return back()->with('success', 'Payment deleted successfully.');
     }
