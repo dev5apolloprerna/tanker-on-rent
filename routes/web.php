@@ -162,16 +162,27 @@ Route::prefix('admin')->group(function () {
 
     });
 
-Route::post('payments/store', [PaymentController::class, 'store'])->name('payments.store');
-Route::get('orders/{order}/payments/history', [PaymentController::class, 'history'])
+    Route::prefix('admin')->group(function () {
+    Route::post('payments/store', [PaymentController::class, 'store'])->name('payments.store');
+    Route::get('orders/{order}/payments/history', [PaymentController::class, 'history'])
         ->name('payments.history');
-Route::post('payments/{payment}/delete', [PaymentController::class, 'destroy'])
-        ->name('payments.delete');
 
-Route::middleware(['auth'])
-    ->prefix('admin')
-    ->group(function () {
-        Route::resource('rent-prices', RentPriceController::class)
+    Route::match(['post', 'delete'], 'payments/{payment}/delete', [PaymentController::class, 'destroy'])        ->name('payments.delete');
+
+});
+
+// Backward-compatible endpoints for any old JavaScript or bookmarks that still
+// point to the pre-admin payment URLs.
+Route::post('payments/store', [PaymentController::class, 'store'])->name('payments.store.legacy');
+Route::get('orders/{order}/payments/history', [PaymentController::class, 'history'])
+        ->name('payments.history.legacy');
+Route::match(['post', 'delete'], 'payments/{payment}/delete', [PaymentController::class, 'destroy'])
+        ->name('payments.delete.legacy');
+        
+    Route::middleware(['auth'])
+        ->prefix('admin')
+        ->group(function () {
+            Route::resource('rent-prices', RentPriceController::class)
              ->only(['index','store','update','destroy']);
 
         // point to a method, and use correct ->name('...')
