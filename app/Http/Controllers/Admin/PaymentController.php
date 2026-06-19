@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\OrderMaster;
 use App\Models\OrderPayment;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -42,8 +43,9 @@ class PaymentController extends Controller
         $newPaid = $normalizeAmount($data['paid_amount']);
 
         $customerUnpaid = 0;
+        $customerIds = $this->matchingCustomerIds($customerId, $order);
         $customerOrders = OrderMaster::notDeleted()
-            ->where('customer_id', $customerId)
+            ->whereIn('customer_id', $customerIds)
             ->get();
 
         foreach ($customerOrders as $customerOrder) {
@@ -52,7 +54,7 @@ class PaymentController extends Controller
         }
 
         $overallPaidSoFar = $normalizeAmount(
-            OrderPayment::where('customer_id', $customerId)
+            OrderPayment::whereIn('customer_id', $customerIds)
                 ->where('order_id', 0)->where('isDelete', 0)
                 ->sum('paid_amount')
         );
@@ -64,9 +66,9 @@ class PaymentController extends Controller
             return back()->with('error', 'Paid amount cannot exceed current unpaid.');
         }
 
-        return DB::transaction(function () use ($order, $customerId, $newPaid, $unpaidBefore, $request) {
+        return DB::transaction(function () use ($customerId, $newPaid, $unpaidBefore, $request) {
         $newUnpaid = max(0, $unpaidBefore - $newPaid);
-
+            
             OrderPayment::create([
                 'customer_id'         => $customerId,
                 // This endpoint records customer-level collection, not tanker-level payment.
@@ -87,9 +89,10 @@ class PaymentController extends Controller
     {
         $order = OrderMaster::findOrFail($orderId);
         $customerId = (int) ($request->get('customer_id') ?: $order->customer_id);
-
+        $customerIds = $this->matchingCustomerIds($customerId, $order);
+        
         $payments = OrderPayment::with('PaymentReceivedUser')
-            ->where('customer_id', $customerId)
+            ->whereIn('customer_id', $customerIds)
             ->where('isDelete', 0)
             ->where(function ($q) use ($orderId) {
                 $q->where('order_id', $orderId)->where('isDelete', 0)->orWhere('order_id', 0);
@@ -99,12 +102,12 @@ class PaymentController extends Controller
            
 
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
-        $overallPaid = (float) OrderPayment::where('customer_id', $customerId)
+        $overallPaid = (float) OrderPayment::whereIn('customer_id', $customerIds)
             ->where('order_id', 0)->where('isDelete', 0)
             ->sum('paid_amount');
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])
-            ->where('customer_id', $customerId)
+            ->whereIn('customer_id', $customerIds)
             ->orderByDesc('order_id')
             ->get();
 
@@ -125,7 +128,43 @@ class PaymentController extends Controller
         
         return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
     }
-     public function destroy(Request $request, $paymentId)
+     private function matchingCustomerIds(int $customerId, ?OrderMaster $order = null): array
+    {
+        $customer = Customer::find($customerId);
+
+        if (! $customer && $order) {
+            $customer = $order->customer;
+        }
+
+        if (! $customer) {
+            return [$customerId];
+        }
+
+        $name = trim((string) $customer->customer_name);
+        $mobile = trim((string) $customer->customer_mobile);
+
+        $ids = Customer::query()
+            ->where(function ($query) use ($name, $mobile) {
+                if ($name !== '') {
+                    $query->where('customer_name', $name);
+                }
+
+                if ($mobile !== '') {
+                    $method = $name !== '' ? 'orWhere' : 'where';
+                    $query->{$method}('customer_mobile', $mobile);
+                }
+            })
+            ->pluck('customer_id')
+            ->map(fn ($id) => (int) $id)
+            ->push($customerId)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $ids ?: [$customerId];
+    }
+
+    public function destroy(Request $request, $paymentId)
     {
 
         $payment = OrderPayment::where('payment_id', $paymentId)

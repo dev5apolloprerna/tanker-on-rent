@@ -378,9 +378,10 @@ unset($summary);
     public function customerOrdersSummary($customerId)
     {
         $customer = Customer::findOrFail($customerId);
-
+        $customerIds = $this->matchingCustomerIds((int) $customerId, $customer);
+        
         $orders = OrderMaster::with(['tanker'])
-            ->where('customer_id', $customerId)
+            ->whereIn('customer_id', $customerIds)
             ->where('isDelete', 0)
             ->latest('rent_start_date')
             ->get();
@@ -398,7 +399,7 @@ unset($summary);
                 'p.created_at',
                 'pru.name as payment_received_by_name'
             )
-            ->where('p.customer_id', $customerId)
+            ->whereIn('p.customer_id', $customerIds)
             ->where('p.isDelete', 0)
             ->orderBy('p.payment_id', 'asc')
             ->get();
@@ -449,6 +450,37 @@ unset($summary);
             'meta'     => $meta,
         ]);
     }
+        private function matchingCustomerIds(int $customerId, ?Customer $customer = null): array
+    {
+        $customer = $customer ?: Customer::find($customerId);
+
+        if (! $customer) {
+            return [$customerId];
+        }
+
+        $name = trim((string) $customer->customer_name);
+        $mobile = trim((string) $customer->customer_mobile);
+
+        $ids = Customer::query()
+            ->where(function ($query) use ($name, $mobile) {
+                if ($name !== '') {
+                    $query->where('customer_name', $name);
+                }
+
+                if ($mobile !== '') {
+                    $method = $name !== '' ? 'orWhere' : 'where';
+                    $query->{$method}('customer_mobile', $mobile);
+                }
+            })
+            ->pluck('customer_id')
+            ->map(fn ($id) => (int) $id)
+            ->push($customerId)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $ids ?: [$customerId];
+    }
    public function monthlyPdf(Request $request)
     {
         $q = OrderMaster::notDeleted()->withSum('paymentMaster', 'paid_amount')->with(['customer', 'tanker', 'rentPrice']);
@@ -467,8 +499,13 @@ unset($summary);
             $q->where('isReceive', (int) $request->isReceive);
         }
 
+        $pdfCustomer = null;
+        $pdfCustomerIds = [];
+        
         if ($request->filled('customer_id')) {
-            $q->where('customer_id', (int) $request->customer_id);
+            $pdfCustomer = Customer::findOrFail((int) $request->customer_id);
+            $pdfCustomerIds = $this->matchingCustomerIds((int) $request->customer_id, $pdfCustomer);
+            $q->whereIn('customer_id', $pdfCustomerIds);
         }
 
         // Monthly-only report
@@ -543,6 +580,7 @@ unset($summary);
                     'grandPaid' => $grandPaid,
                     'grandUnpaid' => $grandUnpaid,
                     'generatedAt' => now(),
+                    'pdfCustomer' => $pdfCustomer,
                 ])->render();
 
 
