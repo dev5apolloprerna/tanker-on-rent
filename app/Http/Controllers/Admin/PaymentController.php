@@ -116,15 +116,21 @@ class PaymentController extends Controller
             'unpaid' => 0,
         ];
 
+        $remainingOverallPaid = $overallPaid;
         foreach ($customerOrders as $customerOrder) {
             $customerSnap = $customerOrder->dueSnapshot();
+            $allocatedPaid = min($remainingOverallPaid, (float) ($customerSnap['unpaid'] ?? 0));
+            $remainingOverallPaid -= $allocatedPaid;
+
+            $customerSnap['paid_sum'] = (float) ($customerSnap['paid_sum'] ?? 0) + $allocatedPaid;
+            $customerSnap['unpaid'] = max(0, (float) ($customerSnap['unpaid'] ?? 0) - $allocatedPaid);
+            $customerSnap['customer_paid_allocation'] = $allocatedPaid;
+
             $customerOrder->customer_snapshot = $customerSnap;
             $customerTotals['paid'] += (float) ($customerSnap['paid_sum'] ?? 0);
             $customerTotals['unpaid'] += (float) ($customerSnap['unpaid'] ?? 0);
         }
 
-        $customerTotals['paid'] += $overallPaid;
-        $customerTotals['unpaid'] = max(0, (float) $customerTotals['unpaid'] - $overallPaid);
         
         return view('admin.payments._history', compact('order', 'payments', 'snap', 'customerOrders', 'customerTotals'));
     }
