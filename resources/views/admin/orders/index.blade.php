@@ -95,7 +95,7 @@
                             <tbody>
                                 @forelse($orders as $o)
                                     @php
-                                        $snap = $o->dueSnapshot();
+                                        $snap = $o->display_snapshot ?? $o->dueSnapshot();
 
                                         $durationText = $snap['rent_basis'] === 'daily'
                                             ? "{$snap['days_used']} day" . ($snap['days_used'] > 1 ? 's' : '')

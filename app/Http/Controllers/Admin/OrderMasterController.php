@@ -77,15 +77,12 @@ if ($customerIds->isNotEmpty()) {
         ->toArray();
 }
 
-$totalPaid = 0;
-$totalUnpaid = 0;
-    
+$baseSnapshots = [];
 $customerPaymentSummary = [];
 
 foreach ($orders as $o) {
     $snap = $o->dueSnapshot();
-    $totalPaid += $snap['paid_sum'];
-    $totalUnpaid += $snap['unpaid'];
+    $baseSnapshots[$o->order_id] = $snap;
 
     $customerId = (int) $o->customer_id;
     if (!isset($customerPaymentSummary[$customerId])) {
@@ -103,12 +100,33 @@ foreach ($customerPaymentSummary as $customerId => &$summary) {
     $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
     $summary['paid'] += $overallPaid;
     $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
-    $totalPaid += $overallPaid;
-    $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
 }
 unset($summary);
 
             
+foreach ($orders->groupBy('customer_id') as $customerId => $customerOrders) {
+    $remainingOverallPaid = (float) ($overallPaymentsByCustomer[(int) $customerId] ?? 0);
+
+    foreach ($customerOrders->sortByDesc('order_id') as $orderForAllocation) {
+        $snap = $baseSnapshots[$orderForAllocation->order_id];
+        $allocatedPaid = min($remainingOverallPaid, (float) ($snap['unpaid'] ?? 0));
+        $remainingOverallPaid -= $allocatedPaid;
+
+        $snap['paid_sum'] = (float) ($snap['paid_sum'] ?? 0) + $allocatedPaid;
+        $snap['unpaid'] = max(0, (float) ($snap['unpaid'] ?? 0) - $allocatedPaid);
+        $snap['customer_paid_allocation'] = $allocatedPaid;
+
+        $orderForAllocation->display_snapshot = $snap;
+    }
+}
+
+$totalPaid = 0;
+$totalUnpaid = 0;
+foreach ($orders as $o) {
+    $snap = $o->display_snapshot ?? $baseSnapshots[$o->order_id];
+    $totalPaid += (float) ($snap['paid_sum'] ?? 0);
+    $totalUnpaid += (float) ($snap['unpaid'] ?? 0);
+}
         $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
         $paymentUser = PaymentReceivedUser::notDeleted()
             ->where(['iStatus'=> 1,'isDelete'=> 0])
