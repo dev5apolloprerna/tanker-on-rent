@@ -107,7 +107,19 @@ class OrderMaster extends Model
     } else {
         // MONTHLY: no proration — months = ceil(days/30), min 1
         // e.g., 39 days -> ceil(39/30) = 2 months
-        $months    = max(1, (int) ceil($daysInclusive / 30));
+        $months = 1;
+        while (true) {
+            $boundary = $startDate->copy()->addMonthsNoOverflow($months)->startOfDay();
+            $shouldChargeNextCycle = $this->received_at
+                ? $boundary->lt($endDate->copy()->startOfDay())
+                : $boundary->lte($endDate->copy()->startOfDay());
+
+            if (! $shouldChargeNextCycle) {
+                break;
+            }
+
+            $months++;
+        }
         $daysUsed  = $daysInclusive;           // info
         $base      = $rate;                    // first month
         $extraDays = max(0, $daysInclusive - 30); // info only

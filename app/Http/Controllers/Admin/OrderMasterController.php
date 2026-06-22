@@ -526,7 +526,7 @@ unset($summary);
             $months = max(1, (int) ($snap['months'] ?? 1));
             $start = \Carbon\Carbon::parse($o->rent_start_date);
             $schedule = [];
-            for ($i = 0; $i < $months; $i++) {
+            for ($i = 0; $i <= $months; $i++) {
                 $schedule[] = $start->copy()->addMonthsNoOverflow($i)->format('d/m/Y');
             }
 
