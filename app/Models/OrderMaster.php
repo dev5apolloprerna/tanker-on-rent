@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class OrderMaster extends Model
 {
@@ -88,9 +89,8 @@ class OrderMaster extends Model
     // Inclusive days: e.g. 24-09 → 30-09 = 7
     $daysInclusive = $startDate->diffInDays($endDate) + 1;
 
-    // 4) Paid sum
-    $paidSumAttr = 'payment_master_sum_paid_amount';
-    $paidSum = (int) ($this->{$paidSumAttr} ?? $this->paymentMaster()->sum('paid_amount'));
+    $paidSum = (int) $this->paymentMaster()->sum('paid_amount');
+    $discountSum = (int) $this->paymentMaster()->sum(DB::raw('COALESCE(discount_amount, 0)'));
 
     $advancePaid = max(0, (int) ($this->advance_amount ?? 0));
     $paidSum = max($paidSum, $advancePaid);
@@ -127,7 +127,7 @@ class OrderMaster extends Model
         $total     = $rate * $months;
     }
 
-    $unpaid = max(0, $total - $paidSum);
+    $unpaid = max(0, $total - $paidSum - $discountSum);
 
     return [
         'rent_basis' => $isDaily ? 'daily' : 'monthly',
@@ -135,6 +135,7 @@ class OrderMaster extends Model
         'extra'      => $extra,
         'total_due'  => $total,
         'paid_sum'   => $paidSum,
+        'discount_sum' => $discountSum,
         'unpaid'     => $unpaid,
         'extra_days' => $extraDays,             // daily: extra chargeable days; monthly: >30d info
         'days_used'  => $daysUsed,              // always the inclusive calendar-day span

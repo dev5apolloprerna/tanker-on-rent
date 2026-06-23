@@ -11,6 +11,10 @@
                     <strong>Total Paid:</strong>
                     ₹{{ number_format($customerTotals['paid'] ?? 0) }}
                 </div>
+                <div>
+                    <strong>Total Discount:</strong>
+                    ₹{{ number_format($customerTotals['discount'] ?? 0) }}
+                </div>
 
                 <div class="{{ ($customerTotals['unpaid'] ?? 0) > 0 ? 'text-danger fw-bold' : 'text-success' }}">
                     <strong>Total Amount to be Paid:</strong>
@@ -28,7 +32,8 @@
                     <th>Tanker No</th>
                     <th>Tanker Name</th>
                     <th class="text-end">Paid</th>
-                    <th class="text-end">Unpaid</th>
+                    <th class="text-end">Discount</th>
+                    <th class="text-end">Unpaid (Needed)</th>
                 </tr>
             </thead>
 
@@ -37,6 +42,7 @@
                     @php
                         $cs = $co->customer_snapshot ?? [
                             'paid_sum' => 0,
+                            'discount_sum' => 0,
                             'unpaid' => 0
                         ];
                     @endphp
@@ -51,6 +57,10 @@
                         <td class="text-end text-success">
                             ₹{{ number_format($cs['paid_sum'] ?? 0) }}
                         </td>
+                        
+                        <td class="text-end text-info">
+                            ₹{{ number_format($cs['discount_sum'] ?? 0) }}
+                        </td>
 
                         <td class="text-end {{ ($cs['unpaid'] ?? 0) > 0 ? 'text-danger fw-bold' : 'text-success' }}">
                             ₹{{ number_format($cs['unpaid'] ?? 0) }}
@@ -58,7 +68,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center">
+                        <td colspan="6" class="text-center">
                             No tanker records found for this customer.
                         </td>
                     </tr>
@@ -69,8 +79,9 @@
 
     @php
         $customerPaid = (float) ($customerTotals['paid'] ?? 0);
+        $customerDiscount = (float) ($customerTotals['discount'] ?? 0);
         $customerUnpaid = (float) ($customerTotals['unpaid'] ?? 0);
-        $customerTotalDue = $customerPaid + $customerUnpaid;
+        $customerTotalDue = $customerPaid + $customerDiscount + $customerUnpaid;
         $lastPayment = $payments->last();
     @endphp
 
@@ -114,6 +125,11 @@
                     ₹{{ number_format($customerPaid) }}
                 </div>
 
+                <div>
+                    <strong>Total Discount (Customer):</strong>
+                    ₹{{ number_format($customerDiscount) }}
+                </div>
+
                 <div class="{{ $customerUnpaid > 0 ? 'text-danger fw-bold' : 'text-success' }}">
                     <strong>Amount to be Paid (Customer):</strong>
                     ₹{{ number_format($customerUnpaid) }}
@@ -131,6 +147,7 @@
                 <th>When</th>
                 <th>Total (Snapshot)</th>
                 <th>Paid</th>
+                <th>Discount</th>
                 <th>Unpaid (After Row)</th>
                 <th>Payment Received By</th>
                 <th>Action</th>
@@ -151,7 +168,11 @@
                     </td>
 
                     <td class="text-success">
-                        ₹{{ number_format((int) $p->paid_amount) }}
+                        {{ (int) ($p->is_discount_amount ?? 0) === 1 ? '-' : '₹'.number_format((int) $p->paid_amount) }}
+                    </td>
+
+                    <td class="text-primary">
+                        {{ (int) ($p->is_discount_amount ?? 0) === 1 ? '₹'.number_format((int) ($p->discount_amount ?? 0)) : '-' }}
                     </td>
 
                     <td class="{{ (int) $p->unpaid_amount > 0 ? 'text-danger' : 'text-success' }}">
@@ -159,7 +180,7 @@
                     </td>
 
                     <td>
-                        {{ $p->PaymentReceivedUser->name ?? '-' }}
+                        {{ (int) ($p->is_discount_amount ?? 0) === 1 ? 'Discount' : ($p->PaymentReceivedUser->name ?? '-') }}
                     </td>
 
                     <td>
@@ -174,7 +195,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center">
+                    <td colspan="8" class="text-center">
                         No payments yet.
                     </td>
                 </tr>

@@ -64,8 +64,11 @@
                                 <span class="badge bg-success me-2" style="font-size: small;">
                                     Total Paid: {{ $totalPaid }}
                                 </span>
+                                <span class="badge bg-info me-2" style="font-size: small;">
+                                    Total Discount: {{ $totalDiscount }}
+                                </span>
                                 <span class="badge bg-danger me-2" style="font-size: small;">
-                                    Total Unpaid: {{ $totalUnpaid }}
+                                    Total Unpaid (Needed Amount): {{ $totalUnpaid }}
                                 </span>
                             </div>
                         </div>
@@ -133,8 +136,12 @@
                                                     Paid: ₹{{ number_format($cSummary['paid']) }}
                                                 </span>
                                                 <br>
+                                                <span class="text-info">
+                                                    Discount: ₹{{ number_format($cSummary['discount'] ?? 0) }}
+                                                </span>
+                                                <br>
                                                 <span class="{{ $cSummary['unpaid'] > 0 ? 'text-danger fw-bold' : '' }}">
-                                                    Unpaid: ₹{{ number_format($cSummary['unpaid']) }}
+                                                    Unpaid (Needed) : ₹{{ number_format($cSummary['unpaid']) }}
                                                 </span>
                                             </div>
                                         </td>
@@ -386,6 +393,15 @@
                         </div>
 
                         <div class="col-6 mb-2">
+                                <label class="form-label">Is Discount Amount?</label>
+                            <select name="is_discount_amount" id="pm_is_discount_amount" class="form-select">
+                                <option value="0">No</option>
+                                <option value="1">Yes</option>
+                            </select>
+                        </div>
+
+                        <div class="col-6 mb-2 pm-received-by-wrap">
+
                             <label class="form-label">
                                 Select Received BY <span class="text-danger">*</span>
                             </label>
@@ -398,17 +414,24 @@
                             </select>
                         </div>
 
-                        <div class="col-6 mb-2">
+                        <div class="col-6 mb-2 pm-due-wrap">
                             <label class="form-label">Due Amount</label>
                             <input type="text" id="pm_unpaid" class="form-control" readonly>
                         </div>
 
-                        <div class="col-6 mb-2">
+                        <div class="col-6 mb-2 pm-paid-wrap">
                             <label class="form-label">
                                 Paid Amount <span class="text-danger">*</span>
                             </label>
                             <input type="number" min="1" step="1" name="paid_amount" class="form-control" required>
                             <small class="text-muted">Cannot exceed current unpaid.</small>
+                        </div>
+                        <div class="col-6 mb-2 pm-discount-wrap" style="display:none;">
+                            <label class="form-label">
+                                Discount Amount <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" min="1" step="1" name="discount_amount" class="form-control">
+                            <small class="text-muted">Discount reduces the customer's due amount.</small>
                         </div>
                     </div>
 
@@ -472,7 +495,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // Payment form validation
     const paymentModal = document.getElementById('paymentModal');
 
-    if (paymentModal) {
+    if (paymentModal) 
+    {
+         const toggleDiscountFields = function () {
+            const isDiscount = document.getElementById('pm_is_discount_amount')?.value === '1';
+            const receivedWrap = paymentModal.querySelector('.pm-received-by-wrap');
+            const dueWrap = paymentModal.querySelector('.pm-due-wrap');
+            const paidWrap = paymentModal.querySelector('.pm-paid-wrap');
+            const discountWrap = paymentModal.querySelector('.pm-discount-wrap');
+            const receivedSelect = paymentModal.querySelector('select[name="payment_received_by"]');
+            const paidInput = paymentModal.querySelector('input[name="paid_amount"]');
+            const discountInput = paymentModal.querySelector('input[name="discount_amount"]');
+
+            if (receivedWrap) receivedWrap.style.display = isDiscount ? 'none' : '';
+            if (dueWrap) dueWrap.style.display = isDiscount ? 'none' : '';
+            if (paidWrap) paidWrap.style.display = isDiscount ? 'none' : '';
+            if (discountWrap) discountWrap.style.display = isDiscount ? '' : 'none';
+            if (receivedSelect) receivedSelect.required = !isDiscount;
+            if (paidInput) paidInput.required = !isDiscount;
+            if (discountInput) discountInput.required = isDiscount;
+        };
+
+        document.getElementById('pm_is_discount_amount')?.addEventListener('change', toggleDiscountFields);
+
         paymentModal.addEventListener('submit', function (event) {
             const form = event.target;
 
@@ -482,11 +527,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const dueText = document.getElementById('pm_unpaid')?.value || '0';
             const due = Number(String(dueText).replace(/[^0-9.]/g, '')) || 0;
-            const paid = Number(form.querySelector('input[name="paid_amount"]')?.value || 0);
+            const isDiscount = form.querySelector('[name="is_discount_amount"]')?.value === '1';
+            const amount = Number(form.querySelector(isDiscount ? 'input[name="discount_amount"]' : 'input[name="paid_amount"]')?.value || 0);
 
-            if (paid > due) {
+            if (!isDiscount && amount > due) {
                 event.preventDefault();
-                alert('Paid amount cannot exceed current unpaid.');
+                alert((isDiscount ? 'Discount amount' : 'Paid amount') + ' cannot exceed current unpaid.');
             }
         });
 
@@ -511,6 +557,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 paidInput.max = unpaid > 0 ? String(unpaid) : '';
                 paidInput.value = '';
             }
+
+            const discountInput = document.querySelector('#paymentModal input[name="discount_amount"]');
+            if (discountInput) {
+                discountInput.max = unpaid > 0 ? String(unpaid) : '';
+                discountInput.value = '';
+            }
+
+            const discountSelect = document.getElementById('pm_is_discount_amount');
+            if (discountSelect) {
+                discountSelect.value = '0';
+            }
+            toggleDiscountFields();
 
             const payTitle = document.getElementById('paymentModalTitle');
 

@@ -116,6 +116,7 @@
           <th>Date</th>
           <th class="text-end">Paid</th>
           <th class="text-end">Unpaid</th>
+          <th class="text-end">Discount</th>
           <th>Received By</th>
         </tr>
       </thead>
@@ -125,12 +126,13 @@
             <td>#{{ $ph->payment_id }}</td>
             <td>{{ (int)$ph->order_id === 0 ? 'Overall' : ('#'.$ph->order_id) }}</td>
             <td>{{ \Carbon\Carbon::parse($ph->payment_date ?? $ph->created_at)->format('d-m-Y H:i') }}</td>
-            <td class="text-end text-success">{{ $fmt($ph->paid_amount) }}</td>
+            <td class="text-end text-success">{{ (int)($ph->is_discount_amount ?? 0) === 1 ? '-' : $fmt($ph->paid_amount) }}</td>
+            <td class="text-end text-primary">{{ (int)($ph->is_discount_amount ?? 0) === 1 ? $fmt($ph->discount_amount ?? 0) : '-' }}</td>
             <td class="text-end {{ (float)$ph->unpaid_amount > 0 ? 'text-danger' : 'text-success' }}">{{ $fmt($ph->unpaid_amount) }}</td>
-            <td>{{ $ph->payment_received_by_name ?? '-' }}</td>
+            <td>{{ (int)($ph->is_discount_amount ?? 0) === 1 ? 'Discount' : ($ph->payment_received_by_name ?? '-') }}</td>
           </tr>
         @empty
-          <tr><td colspan="6" class="text-center text-muted">No payment history found.</td></tr>
+          <tr><td colspan="7" class="text-center text-muted">No payment history found.</td></tr>
         @endforelse
       </tbody>
     </table>
