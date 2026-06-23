@@ -237,6 +237,7 @@
                                                 data-order-id="{{ $o->order_id }}"
                                                 data-customer-id="{{ $o->customer_id }}"
                                                 data-unpaid="{{ $customerPaymentSummary[$o->customer_id]['unpaid'] ?? $snap['unpaid'] }}"
+                                                data-paid="{{ $customerPaymentSummary[$o->customer_id]['paid'] ?? $snap['paid_sum'] }}"
                                                 data-customer-name="{{ $o->customer->customer_name ?? $o->customer_id }}"
                                                 data-rent-basis="{{ $snap['rent_basis'] }}"
                                                 title="Add Payment">
@@ -527,12 +528,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const dueText = document.getElementById('pm_unpaid')?.value || '0';
             const due = Number(String(dueText).replace(/[^0-9.]/g, '')) || 0;
+            const overallPaid = Number(paymentModal.getAttribute('data-overall-paid') || 0);
             const isDiscount = form.querySelector('[name="is_discount_amount"]')?.value === '1';
             const amount = Number(form.querySelector(isDiscount ? 'input[name="discount_amount"]' : 'input[name="paid_amount"]')?.value || 0);
+            const allowedAmount = isDiscount && due <= 0 ? overallPaid : due;
 
-            if (amount > due) {
+            if (amount > allowedAmount) {
                 event.preventDefault();
-                alert((isDiscount ? 'Discount amount' : 'Paid amount') + ' cannot exceed current unpaid.');
+                alert((isDiscount ? 'Discount amount' : 'Paid amount') + ' cannot exceed ' + (isDiscount && due <= 0 ? 'overall paid amount.' : 'current unpaid.'));
             }
         });
 
@@ -543,9 +546,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const orderId = btn.getAttribute('data-order-id');
             const customerId = btn.getAttribute('data-customer-id');
             const unpaid = Number(btn.getAttribute('data-unpaid') || 0);
+            const overallPaid = Number(btn.getAttribute('data-paid') || 0);
             const customerName = btn.getAttribute('data-customer-name') || 'Customer';
 
             currentPaymentModalRentBasis = (btn.getAttribute('data-rent-basis') || '').toLowerCase();
+            paymentModal.setAttribute('data-overall-paid', String(overallPaid));
 
             document.getElementById('pm_order_id').value = orderId || 0;
             document.getElementById('pm_customer_id').value = customerId || '';
@@ -560,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const discountInput = document.querySelector('#paymentModal input[name="discount_amount"]');
             if (discountInput) {
-                discountInput.max = unpaid > 0 ? String(unpaid) : '';
+                discountInput.max = unpaid > 0 ? String(unpaid) : (overallPaid > 0 ? String(overallPaid) : '');
                 discountInput.value = '';
             }
 
@@ -811,19 +816,34 @@ function loadPaymentHistory(orderId, customerId, rentBasis) {
           const parser = document.createElement('div');
         parser.innerHTML = html;
         const unpaidValue = Number(parser.querySelector('#pm_current_unpaid')?.getAttribute('data-value') || 0);
+        const paymentModal = document.getElementById('paymentModal');
+        const paidValue = Number(parser.querySelector('#pm_current_paid')?.getAttribute('data-value') || paymentModal?.getAttribute('data-overall-paid') || 0);
+        if (paymentModal) {
+            paymentModal.setAttribute('data-overall-paid', String(paidValue));
+        }
+
 
         const unpaidInput = document.getElementById('pm_unpaid');
         if (unpaidInput) {
             unpaidInput.value = '₹' + unpaidValue.toLocaleString('en-IN');
         }
 
-        const paidInput = document.getElementById('pm_paid_amount');
+        const paidInput = document.querySelector('#paymentModal input[name="paid_amount"]');
         if (paidInput) {
             paidInput.max = unpaidValue > 0 ? String(unpaidValue) : '';
             if (Number(paidInput.value || 0) > unpaidValue) {
                 paidInput.value = unpaidValue > 0 ? String(unpaidValue) : '';
             }
         }
+        const discountInput = document.querySelector('#paymentModal input[name="discount_amount"]');
+        if (discountInput) {
+            const discountLimit = unpaidValue > 0 ? unpaidValue : paidValue;
+            discountInput.max = discountLimit > 0 ? String(discountLimit) : '';
+            if (Number(discountInput.value || 0) > discountLimit) {
+                discountInput.value = discountLimit > 0 ? String(discountLimit) : '';
+            }
+        }
+        
     })
     .catch(() => {
         historyWrap.innerHTML = '<div class="alert alert-danger">Unable to load payment history.</div>';
