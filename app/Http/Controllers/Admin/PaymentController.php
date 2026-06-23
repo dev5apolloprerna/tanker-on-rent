@@ -47,53 +47,48 @@ class PaymentController extends Controller
         $newDiscount = $isDiscount ? $normalizeAmount($data['discount_amount'] ?? 0) : 0;
         $appliedAmount = $newPaid + $newDiscount;
 
-        $customerUnpaid = 0;
+
         $customerTotalDue = 0;
         $customerIds = $this->matchingCustomerIds($customerId, $order);
         $customerOrders = OrderMaster::notDeleted()
             ->whereIn('customer_id', $customerIds)
             ->get();
+        $orderPaidSoFar = 0;
 
         foreach ($customerOrders as $customerOrder) {
             $customerSnap = $customerOrder->dueSnapshot();
             $customerTotalDue += $normalizeAmount($customerSnap['total_due'] ?? 0);
-            $customerUnpaid += $normalizeAmount($customerSnap['unpaid'] ?? 0);
+            $orderPaymentPaid = $normalizeAmount(
+                $customerOrder->paymentMaster()
+                    ->where('isDelete', 0)
+                    ->sum('paid_amount')
+            );
+            $orderPaidSoFar += max($orderPaymentPaid, max(0, $normalizeAmount($customerOrder->advance_amount ?? 0)));
+
         }
 
         $overallPaidSoFar = $normalizeAmount(
             OrderPayment::whereIn('customer_id', $customerIds)
-                ->where('order_id', 0)->where('isDelete', 0)
+                ->where('order_id', 0)
+                ->where('isDelete', 0)
                 ->sum('paid_amount')
         );
 
-        $overallDiscountSoFar = $normalizeAmount(
-            OrderPayment::whereIn('customer_id', $customerIds)
-                ->where('order_id', 0)->where('isDelete', 0)
-                ->sum(DB::raw('COALESCE(discount_amount, 0)'))
-        );
-
-        $unpaidBefore = max(0, $customerUnpaid - $overallPaidSoFar - $overallDiscountSoFar);
-        $overallDiscountSoFar = $normalizeAmount(
-            OrderPayment::whereIn('customer_id', $customerIds)
-                ->where('order_id', 0)->where('isDelete', 0)
-                ->sum(DB::raw('COALESCE(discount_amount, 0)'))
-        );
-
-        $unpaidBefore = max(0, $customerUnpaid - $overallPaidSoFar - $overallDiscountSoFar);
+        $paidGivenSoFar = $orderPaidSoFar + $overallPaidSoFar;
 
         $discountGivenSoFar = $normalizeAmount(
             OrderPayment::whereIn('customer_id', $customerIds)
                 ->where('isDelete', 0)
                 ->sum(DB::raw('COALESCE(discount_amount, 0)'))
         );
-        $availableDiscountAmount = max(0, $customerTotalDue - $discountGivenSoFar);
+        $unpaidBefore = max(0, $customerTotalDue - $paidGivenSoFar - $discountGivenSoFar);
 
         if ($appliedAmount > $unpaidBefore) {
             return back()->with('error', ($isDiscount ? 'Discount amount' : 'Paid amount') . ' cannot exceed current unpaid.');
         }
 
         return DB::transaction(function () use ($customerId, $newPaid, $newDiscount, $appliedAmount, $unpaidBefore, $customerTotalDue, $request, $isDiscount) {
-        $newUnpaid = max(0, $unpaidBefore - $appliedAmount);
+            $newUnpaid = max(0, $unpaidBefore - $appliedAmount);
                         
             OrderPayment::create([
                 'customer_id'         => $customerId,
