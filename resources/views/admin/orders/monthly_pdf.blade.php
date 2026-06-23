@@ -127,7 +127,8 @@ th {
     <table class="summary">
         <tr><td><strong>Total Amount</strong></td><td class="text-right"><strong>{{ number_format($grandTotal) }}</strong></td></tr>
         <tr><td><strong>Paid Amount</strong></td><td class="text-right"><strong>{{ number_format($grandPaid) }}</strong></td></tr>
-        <tr><td><strong>Unpaid Amount</strong></td><td class="text-right"><strong>{{ number_format($grandUnpaid) }}</strong></td></tr>
+        <tr><td><strong>Discount Amount</strong></td><td class="text-right"><strong>{{ number_format($grandDiscount ?? 0) }}</strong></td></tr>
+        <tr><td><strong>Needed Amount</strong></td><td class="text-right"><strong>{{ number_format($grandUnpaid) }}</strong></td></tr>
     </table>
 </body>
 </html>

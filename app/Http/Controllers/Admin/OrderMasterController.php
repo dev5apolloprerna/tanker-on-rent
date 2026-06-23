@@ -70,10 +70,19 @@ $overallPaymentsByCustomer = [];
 if ($customerIds->isNotEmpty()) {
     $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
         ->where('order_id', 0)->where('isDelete', 0)
-        ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
+        ->select(
+            'customer_id',
+            DB::raw('SUM(paid_amount) as total_paid'),
+            DB::raw('SUM(COALESCE(discount_amount, 0)) as total_discount')
+        )
         ->groupBy('customer_id')
-        ->pluck('total_paid', 'customer_id')
-        ->map(fn ($v) => (float) $v)
+        ->get()
+        ->keyBy('customer_id')
+        ->map(fn ($row) => [
+            'paid' => (float) ($row->total_paid ?? 0),
+            'discount' => (float) ($row->total_discount ?? 0),
+            'applied' => (float) ($row->total_paid ?? 0) + (float) ($row->total_discount ?? 0),
+        ])
         ->toArray();
 }
 
@@ -97,34 +106,47 @@ foreach ($orders as $o) {
 }
 
 foreach ($customerPaymentSummary as $customerId => &$summary) {
-    $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
-    $summary['paid'] += $overallPaid;
-    $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
+    $overall = $overallPaymentsByCustomer[$customerId] ?? ['paid' => 0, 'applied' => 0];
+    $summary['paid'] += (float) ($overall['paid'] ?? 0);
+    $summary['unpaid'] = max(0, (float) $summary['unpaid'] - (float) ($overall['applied'] ?? 0));
 }
 unset($summary);
 
             
 foreach ($orders->groupBy('customer_id') as $customerId => $customerOrders) {
-    $remainingOverallPaid = (float) ($overallPaymentsByCustomer[(int) $customerId] ?? 0);
+    $overall = $overallPaymentsByCustomer[(int) $customerId] ?? ['paid' => 0, 'discount' => 0, 'applied' => 0];
+    $remainingOverallPaid = (float) ($overall['paid'] ?? 0);
+    $remainingOverallDiscount = (float) ($overall['discount'] ?? 0);
+    $remainingOverallApplied = (float) ($overall['applied'] ?? 0);
 
     foreach ($customerOrders->sortByDesc('order_id') as $orderForAllocation) {
         $snap = $baseSnapshots[$orderForAllocation->order_id];
-        $allocatedPaid = min($remainingOverallPaid, (float) ($snap['unpaid'] ?? 0));
+        $startingUnpaid = (float) ($snap['unpaid'] ?? 0);
+        $allocatedApplied = min($remainingOverallApplied, $startingUnpaid);
+        $allocatedPaid = min($remainingOverallPaid, $allocatedApplied);
+        $allocatedDiscount = min($remainingOverallDiscount, max(0, $allocatedApplied - $allocatedPaid));
+        $remainingOverallApplied -= $allocatedApplied;
+
         $remainingOverallPaid -= $allocatedPaid;
+        $remainingOverallDiscount -= $allocatedDiscount;
 
         $snap['paid_sum'] = (float) ($snap['paid_sum'] ?? 0) + $allocatedPaid;
-        $snap['unpaid'] = max(0, (float) ($snap['unpaid'] ?? 0) - $allocatedPaid);
+        $snap['discount_sum'] = (float) ($snap['discount_sum'] ?? 0) + $allocatedDiscount;
+        $snap['unpaid'] = max(0, $startingUnpaid - $allocatedApplied);
         $snap['customer_paid_allocation'] = $allocatedPaid;
+        $snap['customer_discount_allocation'] = $allocatedDiscount;
 
         $orderForAllocation->display_snapshot = $snap;
     }
 }
 
 $totalPaid = 0;
+$totalDiscount = 0;
 $totalUnpaid = 0;
 foreach ($orders as $o) {
     $snap = $o->display_snapshot ?? $baseSnapshots[$o->order_id];
     $totalPaid += (float) ($snap['paid_sum'] ?? 0);
+    $totalDiscount += (float) ($snap['discount_sum'] ?? 0);
     $totalUnpaid += (float) ($snap['unpaid'] ?? 0);
 }
         $godowns =GodownMaster::select('godown_id','Name')->where(['iStatus'=>1,'isDelete'=>0])->orderBy('Name')->get();
@@ -134,7 +156,7 @@ foreach ($orders as $o) {
             ->orderBy('name')
             ->get();
 
-        return view('admin.orders.index', compact('orders','totalPaid','totalUnpaid','godowns','paymentUser','customerPaymentSummary'));
+        return view('admin.orders.index', compact('orders','totalPaid','totalDiscount','totalUnpaid','godowns','paymentUser','customerPaymentSummary'));
     }
 
     // CREATE
@@ -276,7 +298,7 @@ foreach ($orders as $o) {
             }
 
             // Ensure payments reflect requested advance:
-            $paidSoFar = (int) $order->paymentMaster()->sum('paid_amount');
+            $paidSoFar = (int) $order->paymentMaster()->sum(\DB::raw('paid_amount + COALESCE(discount_amount, 0)'));
             $targetAdvance = (int) round($order->advance_amount ?? 0);
             $targetAdvance = max(0, min($targetAdvance, $base)); // cap to base
 
@@ -413,6 +435,8 @@ foreach ($orders as $o) {
                 'p.total_amount',
                 'p.paid_amount',
                 'p.unpaid_amount',
+                'p.is_discount_amount',
+                'p.discount_amount',
                 'p.payment_date',
                 'p.created_at',
                 'pru.name as payment_received_by_name'
@@ -446,7 +470,7 @@ foreach ($orders as $o) {
 
         $overallPaid = (float) $customerPaymentHistory
             ->where('order_id', 0)
-            ->sum('paid_amount');
+            ->sum(fn ($payment) => (float) ($payment->paid_amount ?? 0) + (float) ($payment->discount_amount ?? 0));
         if ($overallPaid > 0) {
             $totals['paid'] += $overallPaid;
             $totals['unpaid'] = max(0, (float)$totals['unpaid'] - $overallPaid);
@@ -570,17 +594,18 @@ foreach ($orders as $o) {
             $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', array_keys($customerSummary))
                 ->where('order_id', 0)
                 ->where('isDelete', 0)
-                ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
+                ->select('customer_id', DB::raw('SUM(paid_amount + COALESCE(discount_amount, 0)) as total_paid'))
                 ->groupBy('customer_id')
-                ->pluck('total_paid', 'customer_id')
-                ->map(fn ($v) => (float) $v)
-                ->toArray();
+                ->get()
+                ->keyBy('customer_id');
 
             foreach ($customerSummary as $customerId => $summary) {
-                $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
-                if ($overallPaid > 0) {
+                $overall = $overallPaymentsByCustomer[$customerId] ?? null;
+                $overallPaid = (float) ($overall->total_paid ?? 0);
+                $overallApplied = $overallPaid + (float) ($overall->total_discount ?? 0);
+                if ($overallApplied > 0) {
                     $grandPaid += $overallPaid;
-                    $grandUnpaid = max(0, $grandUnpaid - $overallPaid);
+                    $grandUnpaid = max(0, $grandUnpaid - $overallApplied);
                 }
             }
 

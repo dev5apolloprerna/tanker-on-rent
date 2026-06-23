@@ -15,9 +15,11 @@ class PaymentController extends Controller
     {
         $data = $request->validate([
             'order_id'    => ['required','integer','min:0'],
-            'paid_amount' => ['required','numeric','min:1'],
+            'is_discount_amount' => ['nullable','boolean'],
+            'paid_amount' => ['required_if:is_discount_amount,0','nullable','numeric','min:1'],
+            'discount_amount' => ['required_if:is_discount_amount,1','nullable','numeric','min:1'],
             'payment_date' => ['required','date'],
-            'payment_received_by' => ['required','integer','exists:payment_received_user,received_id'],
+            'payment_received_by' => ['required_unless:is_discount_amount,1','nullable','integer','exists:payment_received_user,received_id'],
             'customer_id' => ['nullable','integer'],
          ]);
 
@@ -40,9 +42,13 @@ class PaymentController extends Controller
             return (int) round((float) preg_replace('/[^\d.-]/', '', (string) $value));
         };
 
-        $newPaid = $normalizeAmount($data['paid_amount']);
+        $isDiscount = (bool) ($data['is_discount_amount'] ?? false);
+        $newPaid = $isDiscount ? 0 : $normalizeAmount($data['paid_amount'] ?? 0);
+        $newDiscount = $isDiscount ? $normalizeAmount($data['discount_amount'] ?? 0) : 0;
+        $appliedAmount = $newPaid + $newDiscount;
 
         $customerUnpaid = 0;
+        $customerTotalDue = 0;
         $customerIds = $this->matchingCustomerIds($customerId, $order);
         $customerOrders = OrderMaster::notDeleted()
             ->whereIn('customer_id', $customerIds)
@@ -50,39 +56,47 @@ class PaymentController extends Controller
 
         foreach ($customerOrders as $customerOrder) {
             $customerSnap = $customerOrder->dueSnapshot();
+            $customerTotalDue += $normalizeAmount($customerSnap['total_due'] ?? 0);
             $customerUnpaid += $normalizeAmount($customerSnap['unpaid'] ?? 0);
         }
 
         $overallPaidSoFar = $normalizeAmount(
             OrderPayment::whereIn('customer_id', $customerIds)
                 ->where('order_id', 0)->where('isDelete', 0)
-                ->sum('paid_amount')
+                ->sum(DB::raw('paid_amount + COALESCE(discount_amount, 0)'))
         );
 
         $unpaidBefore = max(0, $customerUnpaid - $overallPaidSoFar);
+        $discountGivenSoFar = $normalizeAmount(
+            OrderPayment::whereIn('customer_id', $customerIds)
+                ->where('isDelete', 0)
+                ->sum(DB::raw('COALESCE(discount_amount, 0)'))
+        );
+        $availableDiscountAmount = max(0, $customerTotalDue - $discountGivenSoFar);
 
-
-        if ($newPaid > $unpaidBefore) {
+        if (! $isDiscount && $appliedAmount > $unpaidBefore) {
             return back()->with('error', 'Paid amount cannot exceed current unpaid.');
         }
 
-        return DB::transaction(function () use ($customerId, $newPaid, $unpaidBefore, $request) {
-        $newUnpaid = max(0, $unpaidBefore - $newPaid);
-            
+        return DB::transaction(function () use ($customerId, $newPaid, $newDiscount, $appliedAmount, $unpaidBefore, $customerTotalDue, $request, $isDiscount) {
+        $newUnpaid = max(0, $unpaidBefore - $appliedAmount);
+                        
             OrderPayment::create([
                 'customer_id'         => $customerId,
                 // This endpoint records customer-level collection, not tanker-level payment.
                 'order_id'            => 0,
-                'total_amount'        => $unpaidBefore,
+                'total_amount'        => $isDiscount ? $customerTotalDue : $unpaidBefore,
                 'paid_amount'         => $newPaid,
                 'unpaid_amount'       => $newUnpaid,
+                'is_discount_amount'  => $isDiscount ? 1 : 0,
+                'discount_amount'     => $newDiscount,
                 'payment_date'        => $request->payment_date,
-                'payment_received_by' => $request->payment_received_by,
+                'payment_received_by' => $isDiscount ? null : $request->payment_received_by,
                 'iStatus'             => 1,
                 'isDelete'            => 0,
             ]);
 
-            return back()->with('success', 'Payment recorded.');
+            return back()->with('success', $isDiscount ? 'Discount recorded.' : 'Payment recorded.');
         });
     }
     public function history(Request $request, $orderId)
@@ -104,7 +118,12 @@ class PaymentController extends Controller
         $snap = $order->dueSnapshot(); // base, extra, total_due, paid_sum, unpaid, extra_days
         $overallPaid = (float) OrderPayment::whereIn('customer_id', $customerIds)
             ->where('order_id', 0)->where('isDelete', 0)
-            ->sum('paid_amount');
+            ->sum(DB::raw('paid_amount + COALESCE(discount_amount, 0)'));
+
+        $overallDiscount = (float) OrderPayment::whereIn('customer_id', $customerIds)
+            ->where('order_id', 0)->where('isDelete', 0)
+            ->sum(DB::raw('COALESCE(discount_amount, 0)'));
+        $overallApplied = $overallPaid + $overallDiscount;
         $customerOrders = OrderMaster::notDeleted()
             ->with(['tanker'])
             ->whereIn('customer_id', $customerIds)
@@ -117,15 +136,26 @@ class PaymentController extends Controller
         ];
 
         $remainingOverallPaid = $overallPaid;
+        $remainingOverallDiscount = $overallDiscount;
+        $remainingOverallApplied = $overallApplied;
+
         foreach ($customerOrders as $customerOrder) {
             $customerSnap = $customerOrder->dueSnapshot();
-            $allocatedPaid = min($remainingOverallPaid, (float) ($customerSnap['unpaid'] ?? 0));
+            $startingUnpaid = (float) ($customerSnap['unpaid'] ?? 0);
+            $allocatedApplied = min($remainingOverallApplied, $startingUnpaid);
+            $allocatedPaid = min($remainingOverallPaid, $allocatedApplied);
+            $allocatedDiscount = min($remainingOverallDiscount, max(0, $allocatedApplied - $allocatedPaid));
+            $remainingOverallApplied -= $allocatedApplied;
+
             $remainingOverallPaid -= $allocatedPaid;
 
             $customerSnap['paid_sum'] = (float) ($customerSnap['paid_sum'] ?? 0) + $allocatedPaid;
-            $customerSnap['unpaid'] = max(0, (float) ($customerSnap['unpaid'] ?? 0) - $allocatedPaid);
-            $customerSnap['customer_paid_allocation'] = $allocatedPaid;
+            $customerSnap['discount_sum'] = (float) ($customerSnap['discount_sum'] ?? 0) + $allocatedDiscount;
+            $customerSnap['unpaid'] = max(0, $startingUnpaid - $allocatedApplied);
 
+            $customerSnap['customer_paid_allocation'] = $allocatedPaid;
+            $customerSnap['customer_discount_allocation'] = $allocatedDiscount;
+            
             $customerOrder->customer_snapshot = $customerSnap;
             $customerTotals['paid'] += (float) ($customerSnap['paid_sum'] ?? 0);
             $customerTotals['unpaid'] += (float) ($customerSnap['unpaid'] ?? 0);
