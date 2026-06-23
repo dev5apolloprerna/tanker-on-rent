@@ -82,9 +82,14 @@ class PaymentController extends Controller
                 ->sum(DB::raw('COALESCE(discount_amount, 0)'))
         );
         $unpaidBefore = max(0, $customerTotalDue - $paidGivenSoFar - $discountGivenSoFar);
+        $availableAmount = $unpaidBefore;
 
-        if ($appliedAmount > $unpaidBefore) {
-            return back()->with('error', ($isDiscount ? 'Discount amount' : 'Paid amount') . ' cannot exceed current unpaid.');
+        if ($isDiscount && $unpaidBefore <= 0) {
+            $availableAmount = $paidGivenSoFar;
+        }
+
+        if ($appliedAmount > $availableAmount) {
+            return back()->with('error', ($isDiscount ? 'Discount amount' : 'Paid amount') . ' cannot exceed ' . ($isDiscount && $unpaidBefore <= 0 ? 'overall paid amount.' : 'current unpaid.'));
         }
 
         return DB::transaction(function () use ($customerId, $newPaid, $newDiscount, $appliedAmount, $unpaidBefore, $customerTotalDue, $request, $isDiscount) {
