@@ -81,7 +81,7 @@
         $customerPaid = (float) ($customerTotals['paid'] ?? 0);
         $customerDiscount = (float) ($customerTotals['discount'] ?? 0);
         $customerUnpaid = (float) ($customerTotals['unpaid'] ?? 0);
-        $customerTotalDue = $customerPaid + $customerDiscount + $customerUnpaid;
+        $customerTotalDue = (float) ($customerTotals['total_due'] ?? ($customerPaid + $customerUnpaid));
         $lastPayment = $payments->last();
     @endphp
 

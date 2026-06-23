@@ -97,17 +97,20 @@ foreach ($orders as $o) {
     if (!isset($customerPaymentSummary[$customerId])) {
         $customerPaymentSummary[$customerId] = [
             'paid' => 0,
+            'discount' => 0,
             'unpaid' => 0,
         ];
     }
 
     $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
+    $customerPaymentSummary[$customerId]['discount'] += (float) ($snap['discount_sum'] ?? 0);
     $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
 }
 
 foreach ($customerPaymentSummary as $customerId => &$summary) {
     $overall = $overallPaymentsByCustomer[$customerId] ?? ['paid' => 0, 'applied' => 0];
     $summary['paid'] += (float) ($overall['paid'] ?? 0);
+    $summary['discount'] = (float) ($summary['discount'] ?? 0) + (float) ($overall['discount'] ?? 0);
     $summary['unpaid'] = max(0, (float) $summary['unpaid'] - (float) ($overall['applied'] ?? 0));
 }
 unset($summary);
@@ -122,10 +125,10 @@ foreach ($orders->groupBy('customer_id') as $customerId => $customerOrders) {
     foreach ($customerOrders->sortByDesc('order_id') as $orderForAllocation) {
         $snap = $baseSnapshots[$orderForAllocation->order_id];
         $startingUnpaid = (float) ($snap['unpaid'] ?? 0);
-        $allocatedApplied = min($remainingOverallApplied, $startingUnpaid);
-        $allocatedPaid = min($remainingOverallPaid, $allocatedApplied);
-        $allocatedDiscount = min($remainingOverallDiscount, max(0, $allocatedApplied - $allocatedPaid));
-        $remainingOverallApplied -= $allocatedApplied;
+        $allocatedPaid = min($remainingOverallPaid, $startingUnpaid);
+        $allocatedDiscount = min($remainingOverallDiscount, $startingUnpaid);
+        $allocatedApplied = $allocatedPaid + $allocatedDiscount;
+        $remainingOverallApplied = max(0, $remainingOverallApplied - $allocatedApplied);
 
         $remainingOverallPaid -= $allocatedPaid;
         $remainingOverallDiscount -= $allocatedDiscount;
@@ -450,7 +453,7 @@ foreach ($orders as $o) {
             ->whereIn('order_id', $orderIds)
             ->groupBy('order_id');
 
-        $totals = ['orders_count'=>0, 'total_due'=>0, 'paid'=>0, 'unpaid'=>0];
+        $totals = ['orders_count'=>0, 'total_due'=>0, 'paid'=>0, 'discount'=>0, 'unpaid'=>0];
         $totals['orders_count'] = $orders->count();
 
         $dailyCount = 0; $monthlyCount = 0;
@@ -462,6 +465,7 @@ foreach ($orders as $o) {
 
             $totals['total_due'] += (float) ($s['total_due'] ?? 0);
             $totals['paid']      += (float) ($s['paid_sum']  ?? 0);
+            $totals['discount']  += (float) ($s['discount_sum'] ?? 0);
             $totals['unpaid']    += (float) ($s['unpaid']    ?? 0);
 
             if (($s['rent_basis'] ?? '') === 'daily') $dailyCount++; else $monthlyCount++;
@@ -470,11 +474,37 @@ foreach ($orders as $o) {
 
         $overallPaid = (float) $customerPaymentHistory
             ->where('order_id', 0)
-            ->sum(fn ($payment) => (float) ($payment->paid_amount ?? 0) + (float) ($payment->discount_amount ?? 0));
-        if ($overallPaid > 0) {
+            ->sum(fn ($payment) => (float) ($payment->paid_amount ?? 0));
+        $overallDiscount = (float) $customerPaymentHistory
+            ->where('order_id', 0)
+            ->sum(fn ($payment) => (float) ($payment->discount_amount ?? 0));
+        $overallApplied = $overallPaid + $overallDiscount;
+        if ($overallApplied > 0) {
+            $remainingOverallPaid = $overallPaid;
+            $remainingOverallDiscount = $overallDiscount;
+
+            foreach ($orders->sortByDesc('order_id') as $orderForAllocation) {
+                $snapshot = $orderForAllocation->snap ?? $orderForAllocation->dueSnapshot();
+                $startingUnpaid = (float) ($snapshot['unpaid'] ?? 0);
+                $allocatedPaid = min($remainingOverallPaid, $startingUnpaid);
+                $allocatedDiscount = min($remainingOverallDiscount, $startingUnpaid);
+                $allocatedApplied = $allocatedPaid + $allocatedDiscount;
+
+                $remainingOverallPaid -= $allocatedPaid;
+                $remainingOverallDiscount -= $allocatedDiscount;
+
+                $snapshot['paid_sum'] = (float) ($snapshot['paid_sum'] ?? 0) + $allocatedPaid;
+                $snapshot['discount_sum'] = (float) ($snapshot['discount_sum'] ?? 0) + $allocatedDiscount;
+                $snapshot['unpaid'] = max(0, $startingUnpaid - $allocatedApplied);
+                $orderForAllocation->snap = $snapshot;
+            }
+
             $totals['paid'] += $overallPaid;
-            $totals['unpaid'] = max(0, (float)$totals['unpaid'] - $overallPaid);
+            $totals['discount'] += $overallDiscount;
+            $totals['unpaid'] = max(0, (float)$totals['unpaid'] - $overallApplied);
         }
+
+
 
         $meta = [
             'daily_count'       => $dailyCount,
@@ -561,6 +591,7 @@ foreach ($orders as $o) {
         $grandTotal = 0;
         $grandPaid = 0;
         $grandUnpaid = 0;
+        $grandDiscount = 0;
         $customerSummary = [];
 
         foreach ($orders as $o) {
@@ -580,6 +611,7 @@ foreach ($orders as $o) {
 
             $grandTotal += (float) $snap['total_due'];
             $grandPaid += (float) $snap['paid_sum'];
+            $grandDiscount += (float) ($snap['discount_sum'] ?? 0);
             $grandUnpaid += (float) $snap['unpaid'];
 
             $cid = (int) $o->customer_id;
@@ -590,11 +622,15 @@ foreach ($orders as $o) {
             $customerSummary[$cid]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
         }
 
-        if (!empty($customerSummary)) {
+         if (!empty($customerSummary)) {
             $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', array_keys($customerSummary))
                 ->where('order_id', 0)
                 ->where('isDelete', 0)
-                ->select('customer_id', DB::raw('SUM(paid_amount + COALESCE(discount_amount, 0)) as total_paid'))
+                ->select(
+                    'customer_id',
+                    DB::raw('SUM(paid_amount) as total_paid'),
+                    DB::raw('SUM(COALESCE(discount_amount, 0)) as total_discount')
+                )
                 ->groupBy('customer_id')
                 ->get()
                 ->keyBy('customer_id');
@@ -602,9 +638,11 @@ foreach ($orders as $o) {
             foreach ($customerSummary as $customerId => $summary) {
                 $overall = $overallPaymentsByCustomer[$customerId] ?? null;
                 $overallPaid = (float) ($overall->total_paid ?? 0);
-                $overallApplied = $overallPaid + (float) ($overall->total_discount ?? 0);
+                $overallDiscount = (float) ($overall->total_discount ?? 0);
+                $overallApplied = $overallPaid + $overallDiscount;
                 if ($overallApplied > 0) {
                     $grandPaid += $overallPaid;
+                    $grandDiscount += $overallDiscount;
                     $grandUnpaid = max(0, $grandUnpaid - $overallApplied);
                 }
             }
@@ -621,6 +659,7 @@ foreach ($orders as $o) {
                     'reportRows' => $reportRows,
                     'grandTotal' => $grandTotal,
                     'grandPaid' => $grandPaid,
+                    'grandDiscount' => $grandDiscount,
                     'grandUnpaid' => $grandUnpaid,
                     'generatedAt' => now(),
                     'pdfCustomer' => $pdfCustomer,

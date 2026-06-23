@@ -18,6 +18,7 @@
     <div class="text-end mb-2">
       <span class="badge bg-primary me-2" style="font-size: medium;">Total: {{ $fmt($totals['total_due']) }}</span>
       <span class="badge bg-success me-2" style="font-size: medium;">Paid: {{ $fmt($totals['paid']) }}</span>
+      <span class="badge bg-info me-2" style="font-size: medium;">Discount: {{ $fmt($totals['discount'] ?? 0) }}</span>
       <span class="badge bg-danger" style="font-size: medium;">Unpaid: {{ $fmt($totals['unpaid']) }}</span>
     </div>
   </div>
@@ -39,6 +40,7 @@
           <th>Basis</th>
           <th class="text-end">Total</th>
           <th class="text-end">Paid</th>
+          <th class="text-end">Discount</th>
           <th class="text-end">Unpaid</th>
           <!--<th class="text-end">Payments</th>-->
         </tr>
@@ -67,6 +69,7 @@
             
             <td class="text-end">{{ $fmt($s['total_due'] ?? 0) }}</td>
             <td class="text-end">{{ $fmt($s['paid_sum'] ?? 0) }}</td>
+            <td class="text-end text-info">{{ $fmt($s['discount_sum'] ?? 0) }}</td>
             <td class="text-end {{ ($s['unpaid'] ?? 0) > 0 ? 'text-danger fw-bold' : '' }}">
               {{ $fmt($s['unpaid'] ?? 0) }}
             </td>
@@ -89,7 +92,7 @@
 
           @if($plist->isNotEmpty())
             <tr class="collapse show" id="pm-{{ $o->order_id }}">
-              <td colspan="7" class="p-0">
+              <td colspan="8" class="p-0">
                 <ul class="list-group list-group-flush">
                   @foreach($plist as $pm)
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -127,8 +130,8 @@
             <td>{{ (int)$ph->order_id === 0 ? 'Overall' : ('#'.$ph->order_id) }}</td>
             <td>{{ \Carbon\Carbon::parse($ph->payment_date ?? $ph->created_at)->format('d-m-Y H:i') }}</td>
             <td class="text-end text-success">{{ (int)($ph->is_discount_amount ?? 0) === 1 ? '-' : $fmt($ph->paid_amount) }}</td>
-            <td class="text-end text-primary">{{ (int)($ph->is_discount_amount ?? 0) === 1 ? $fmt($ph->discount_amount ?? 0) : '-' }}</td>
             <td class="text-end {{ (float)$ph->unpaid_amount > 0 ? 'text-danger' : 'text-success' }}">{{ $fmt($ph->unpaid_amount) }}</td>
+            <td class="text-end text-primary">{{ (int)($ph->is_discount_amount ?? 0) === 1 ? $fmt($ph->discount_amount ?? 0) : '-' }}</td>
             <td>{{ (int)($ph->is_discount_amount ?? 0) === 1 ? 'Discount' : ($ph->payment_received_by_name ?? '-') }}</td>
           </tr>
         @empty
