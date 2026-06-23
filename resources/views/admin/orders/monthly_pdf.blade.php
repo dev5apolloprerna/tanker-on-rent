@@ -104,7 +104,7 @@ th {
                 @endphp
                 <tr>
                     <td>Tanker.{{ $i + 1 }}</td>
-                    <td>{{ $order->tanker->tanker_name ?? '-' }}<br><span class="small">{{ $schedule[0] ?? '-' }}</span></td>
+                    <td>{{ $order->tanker->tanker_name ?? '-' }}<br><br><span class="small">{{ $schedule[0] ?? '-' }}</span></td>
                     <td>{{ $order->tanker->tanker_code ?? '-' }}</td>
                     <td class="text-right">{{ $snap['months'] }}</td>
                     <td class="text-right">{{ number_format($snap['base']) }}</td>
