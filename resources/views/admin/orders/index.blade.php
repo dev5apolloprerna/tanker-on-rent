@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const discountInput = paymentModal.querySelector('input[name="discount_amount"]');
 
             if (receivedWrap) receivedWrap.style.display = isDiscount ? 'none' : '';
-            if (dueWrap) dueWrap.style.display = isDiscount ? 'none' : '';
+            if (dueWrap) dueWrap.style.display = '';
             if (paidWrap) paidWrap.style.display = isDiscount ? 'none' : '';
             if (discountWrap) discountWrap.style.display = isDiscount ? '' : 'none';
             if (receivedSelect) receivedSelect.required = !isDiscount;
@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isDiscount = form.querySelector('[name="is_discount_amount"]')?.value === '1';
             const amount = Number(form.querySelector(isDiscount ? 'input[name="discount_amount"]' : 'input[name="paid_amount"]')?.value || 0);
 
-            if (!isDiscount && amount > due) {
+            if (amount > due) {
                 event.preventDefault();
                 alert((isDiscount ? 'Discount amount' : 'Paid amount') + ' cannot exceed current unpaid.');
             }
