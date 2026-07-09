@@ -48,21 +48,24 @@ class OrderMasterController extends Controller
             $q->where('rent_type', $request->rent_type);
         }
 
-           $q->where(function($sub) {
+        if (!$request->filled('isReceive')) {
+            $q->where(function($sub) {
                 $sub->where('isReceive', 1)
                     ->orWhereHas('paymentMaster', function($pm) {
                         // unpaid_amount > 0 means still pending, so keep those
                         $pm->where('unpaid_amount', '>', 0);
                     });
             })
-            // exclude isReceive=0 with unpaid=0
+            // exclude isReceive=0 with unpaid=0 from the default list only.
+            // When a tanker status is searched, show the full matching received
+            // or not received tanker list.
             ->whereDoesntHave('paymentMaster', function($pm) {
                 $pm->where('unpaid_amount', '=', 0)
                    ->whereHas('order', function($order) {
                        $order->where('isReceive', 0);
                    });
             });
-
+        }
      $orders = $q->orderByDesc('order_id')->paginate(10)->withQueryString();
 
 $customerIds = collect($orders->items())->pluck('customer_id')->map(fn ($id) => (int) $id)->unique()->values();
