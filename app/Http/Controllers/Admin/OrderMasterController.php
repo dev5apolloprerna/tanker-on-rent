@@ -33,7 +33,10 @@ class OrderMasterController extends Controller
                   ->where('rent_type', 'like', "%{$s}%")
                   ->orWhere('reference_name', 'like', "%{$s}%")
                   ->orWhere('reference_mobile_no', 'like', "%{$s}%")
-                  ->orWhere('tanker_location', 'like', "%{$s}%");
+                  ->orWhere('tanker_location', 'like', "%{$s}%")
+                  ->orWhereHas('tanker', function ($tanker) use ($s) {
+                      $tanker->where('tanker_code', 'like', "%{$s}%");
+                  });
             });
         }
 
@@ -566,7 +569,10 @@ foreach ($orders as $o) {
                 $x->where('rent_type', 'like', "%{$s}%")
                   ->orWhere('reference_name', 'like', "%{$s}%")
                   ->orWhere('reference_mobile_no', 'like', "%{$s}%")
-                  ->orWhere('tanker_location', 'like', "%{$s}%");
+                  ->orWhere('tanker_location', 'like', "%{$s}%")
+                  ->orWhereHas('tanker', function ($tanker) use ($s) {
+                      $tanker->where('tanker_code', 'like', "%{$s}%");
+                  });
             });
         }
 
@@ -654,6 +660,7 @@ foreach ($orders as $o) {
 
        $fontPath = $_SERVER['DOCUMENT_ROOT'] . '/tanker_on_rent/fonts/NotoSansGujarati-Regular.ttf';
 
+
         if (!file_exists($fontPath)) {
             dd('Font not found: ' . $fontPath);
         }
@@ -666,6 +673,7 @@ foreach ($orders as $o) {
                     'grandUnpaid' => $grandUnpaid,
                     'generatedAt' => now(),
                     'pdfCustomer' => $pdfCustomer,
+                    'gujaratiFontPath' => $fontPath,
                 ])->render();
 
 

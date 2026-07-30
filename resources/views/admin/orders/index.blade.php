@@ -21,7 +21,7 @@
                         <div class="col-md-10">
                             <form method="GET" action="{{ route('orders.index') }}" class="d-flex">
                                 <input type="text" class="form-control me-2" name="search" value="{{ request('search') }}"
-                                       placeholder="Order Type / Rent Type / Ref Name / Ref Mobile / Location">
+                                       placeholder="Tanker No / Rent Type / Ref Name / Ref Mobile / Location">
 
                                 <select class="form-select me-2" name="rent_type">
                                     <option value="">-- Rent Type --</option>
