@@ -93,6 +93,7 @@ th {
                 <th style="width:7%">Months</th>
                 <th style="width:10%">Rent</th>
                 <th style="width:10%">Total Rent</th>
+                <th style="width:15%">Tanker Status</th>
             </tr>
         </thead>
         <tbody>
@@ -109,17 +110,18 @@ th {
                     <td class="text-right">{{ $snap['months'] }}</td>
                     <td class="text-right">{{ number_format($snap['base']) }}</td>
                     <td class="text-right">{{ number_format($snap['total_due']) }}</td>
+                    <td>{{ (int) $order->isReceive === 0 ? 'ટેન્કર મળી ગઈ' : 'ટેન્કર નથી મળી' }}</td>
                 </tr>
                 @foreach(array_slice($schedule, 1) as $date)
                     <tr>
                         <td></td>
                         <td class="small">{{ $date }}</td>
-                        <td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td>
                     </tr>
                 @endforeach
-                <tr class="section-gap"><td colspan="6"></td></tr>
+                <tr class="section-gap"><td colspan="7"></td></tr>
             @empty
-                <tr><td colspan="6" style="text-align:center">No monthly orders found.</td></tr>
+                <tr><td colspan="7" style="text-align:center">No monthly orders found.</td></tr>
             @endforelse
         </tbody>
     </table>
