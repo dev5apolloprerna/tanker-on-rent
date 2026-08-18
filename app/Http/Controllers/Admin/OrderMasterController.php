@@ -31,6 +31,7 @@ class OrderMasterController extends Controller
                 $x
                     // ->where('order_type', 'like', "%{$s}%")
                   ->where('rent_type', 'like', "%{$s}%")
+                  ->orWhere('company_name', 'like', "%{$s}%")
                   ->orWhere('reference_name', 'like', "%{$s}%")
                   ->orWhere('reference_mobile_no', 'like', "%{$s}%")
                   ->orWhere('tanker_location', 'like', "%{$s}%")
@@ -183,6 +184,7 @@ foreach ($orders as $o) {
     {
         $request->validate([
             'customer_id'          => 'required|integer',
+            'company_name'         => 'nullable|string|max:150',
             'tanker_id'            => 'required|integer',
             'rent_type'            => ['required','int'],
             'rent_start_date'      => 'required|date',
@@ -197,6 +199,7 @@ foreach ($orders as $o) {
 
         $order = OrderMaster::create([
             'customer_id'         => $request->customer_id,
+            'company_name'        => $request->company_name,
             'user_name'         => $request->user_name,
             'user_mobile'         => $request->user_mobile,
             'tanker_id'           => $request->tanker_id,
@@ -262,6 +265,7 @@ foreach ($orders as $o) {
 
         $request->validate([
             'customer_id'          => 'required|integer',
+            'company_name'         => 'nullable|string|max:150',
             'tanker_id'            => 'required|integer',
             'rent_type'            => ['required','int'],
             'rent_start_date'      => 'required|date',
@@ -276,6 +280,7 @@ foreach ($orders as $o) {
 
         $order->update([
             'customer_id'         => $request->customer_id,
+            'company_name'         => 'nullable|string|max:150',
             'user_name'         => $request->user_name,
             'user_mobile'         => $request->user_mobile,
             'tanker_id'           => $request->tanker_id,
@@ -559,7 +564,11 @@ foreach ($orders as $o) {
 
         return $ids ?: [$customerId];
     }
-   public function monthlyPdf(Request $request)
+    /**
+     * Builds the exact data set used by the Monthly Orders report, shared by
+     * both the PDF and Excel exports so they can never show different numbers.
+     */
+    private function buildMonthlyReportData(Request $request): array
     {
         $q = OrderMaster::notDeleted()->withSum('paymentMaster', 'paid_amount')->with(['customer', 'tanker', 'rentPrice']);
 
@@ -582,7 +591,7 @@ foreach ($orders as $o) {
 
         $pdfCustomer = null;
         $pdfCustomerIds = [];
-        
+
         if ($request->filled('customer_id')) {
             $pdfCustomer = Customer::findOrFail((int) $request->customer_id);
             $pdfCustomerIds = $this->matchingCustomerIds((int) $request->customer_id, $pdfCustomer);
@@ -631,7 +640,7 @@ foreach ($orders as $o) {
             $customerSummary[$cid]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
         }
 
-         if (!empty($customerSummary)) {
+        if (!empty($customerSummary)) {
             $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', array_keys($customerSummary))
                 ->where('order_id', 0)
                 ->where('isDelete', 0)
@@ -655,8 +664,22 @@ foreach ($orders as $o) {
                     $grandUnpaid = max(0, $grandUnpaid - $overallApplied);
                 }
             }
-
         }
+
+        return [
+            'reportRows'    => $reportRows,
+            'grandTotal'    => $grandTotal,
+            'grandPaid'     => $grandPaid,
+            'grandDiscount' => $grandDiscount,
+            'grandUnpaid'   => $grandUnpaid,
+            'generatedAt'   => now(),
+            'pdfCustomer'   => $pdfCustomer,
+        ];
+    }
+
+   public function monthlyPdf(Request $request)
+    {
+        $data = $this->buildMonthlyReportData($request);
 
        $fontPath = $_SERVER['DOCUMENT_ROOT'] . '/tanker_on_rent/fonts/NotoSansGujarati-Regular.ttf';
 
@@ -665,14 +688,7 @@ foreach ($orders as $o) {
             dd('Font not found: ' . $fontPath);
         }
 
-            $html = view('admin.orders.monthly_pdf', [
-                    'reportRows' => $reportRows,
-                    'grandTotal' => $grandTotal,
-                    'grandPaid' => $grandPaid,
-                    'grandDiscount' => $grandDiscount,
-                    'grandUnpaid' => $grandUnpaid,
-                    'generatedAt' => now(),
-                    'pdfCustomer' => $pdfCustomer,
+            $html = view('admin.orders.monthly_pdf', $data + [
                     'gujaratiFontPath' => $fontPath,
                 ])->render();
 
@@ -696,5 +712,32 @@ foreach ($orders as $o) {
                 return response($mpdf->Output($fileNamePrefix . '-' . now()->format('Ymd_His') . '.pdf', 'I'))
                     ->header('Content-Type', 'application/pdf');
 
+    }
+
+    /**
+     * Same Monthly Orders report as monthlyPdf(), downloaded as an Excel
+     * workbook instead of a PDF. Uses the exact same data-building method,
+     * so the figures always match the PDF.
+     */
+    public function monthlyExcel(Request $request)
+    {
+        $data = $this->buildMonthlyReportData($request);
+
+        $fileNamePrefix = $request->filled('customer_id')
+            ? 'customer-monthly-orders-report'
+            : 'monthly-orders-report';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\MonthlyOrdersExport(
+                $data['reportRows'],
+                $data['grandTotal'],
+                $data['grandPaid'],
+                $data['grandDiscount'],
+                $data['grandUnpaid'],
+                $data['generatedAt'],
+                $data['pdfCustomer']
+            ),
+            $fileNamePrefix . '-' . now()->format('Ymd_His') . '.xlsx'
+        );
     }
 }

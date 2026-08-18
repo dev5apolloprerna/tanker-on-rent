@@ -17,98 +17,160 @@ use Illuminate\Support\Facades\DB; // top of file
 
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\DailyOrdersExport;
 
 class DailyOrderController extends Controller
 {
 
     public function __construct(private LedgerService $ledger) {}
 
-    
+    /**
+     * Shared filtering used by the listing page and both exports,
+     * so PDF / Excel always match whatever is currently on screen.
+     */
+    private function filteredDailyOrdersQuery(Request $request)
+    {
+    $query = DailyOrder::notDeleted();
+
+        // ✅ Customer Name (LIKE)
+        if ($request->filled('customer_name')) {
+            $name = trim($request->customer_name);
+            $query->where('customer_name', 'like', "%{$name}%");
+        }
+
+        // ✅ Mobile (LIKE or exact - choose one)
+        if ($request->filled('customer_mobile')) {
+            $mobile = trim($request->customer_mobile);
+            $query->where('mobile', 'like', "%{$mobile}%");
+            // or: $query->where('mobile', $mobile);
+        }
+
+        // ✅ Date range on rent_date (From / To)
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $to   = Carbon::parse($request->to_date)->endOfDay();
+            $query->whereBetween('rent_date', [$from, $to]);
+        } elseif ($request->filled('from_date')) {
+            $from = Carbon::parse($request->from_date)->startOfDay();
+            $query->where('rent_date', '>=', $from);
+        } elseif ($request->filled('to_date')) {
+            $to = Carbon::parse($request->to_date)->endOfDay();
+            $query->where('rent_date', '<=', $to);
+        }
+
+        return $query->orderByDesc('daily_order_id');
+    }
+
+    /**
+     * Adds calc_* fields (days, extra, grand, paid, due) onto a collection
+     * of DailyOrder rows and returns the running totals alongside it.
+     */
+    private function withCalculatedTotals($collection, float $rate): array
+    {
+        $totals = [
+            'days' => 0, 'base' => 0.0, 'extra' => 0.0, 'stored' => 0.0,
+            'grand' => 0.0, 'paid' => 0.0, 'due' => 0.0,
+        ];
+
+        $collection->transform(function ($r) use (&$totals, $rate) {
+            $placed   = $r->rent_date;
+            $received = $r->received_at;
+
+            $start = $placed ? Carbon::parse($placed)->startOfDay() : null;
+            $end   = $received ? Carbon::parse($received)->startOfDay() : now()->startOfDay();
+
+            $days  = $start ? max(0, $start->diffInDays($end)) : 0;
+
+            $base  = $days >= 1 ? $rate : 0;
+            $extra = max(0, $days - 1) * $rate;
+
+            $stored = (float) ($r->total_amount ?? 0);
+            $grand  = round($stored + $extra, 2);
+
+            $paid = (float) DailyOrderLedger::where('daily_order_id', $r->daily_order_id)
+                ->where('iStatus', 1)->where('isDelete', 0)
+                ->sum('credit_bl');
+
+            $due = max(0, $grand - $paid);
+
+            $r->calc_days   = $days;
+            $r->calc_base   = round($base, 2);
+            $r->calc_extra  = round($extra, 2);
+            $r->calc_stored = round($stored, 2);
+            $r->calc_grand  = round($grand, 2);
+            $r->calc_paid   = round($paid, 2);
+            $r->calc_due    = round($due, 2);
+
+            $totals['days']   += $days;
+            $totals['base']   += $r->calc_base;
+            $totals['extra']  += $r->calc_extra;
+            $totals['stored'] += $r->calc_stored;
+            $totals['grand']  += $r->calc_grand;
+            $totals['paid']   += $r->calc_paid;
+            $totals['due']    += $r->calc_due;
+
+            return $r;
+        });
+
+        return [$collection, $totals];
+    }
+
+    private function dailyRate(): float
+    {
+        $dailyrate = RentPrice::select('amount')->where(['rent_type' => 'Daily'])->first();
+        return (float) ($dailyrate->amount ?? 0);
+    }
+
 public function index(Request $request)
 {
-    $query = DailyOrder::where('isDelete', 0);
-
-    // ✅ Customer Name (LIKE)
-    if ($request->filled('customer_name')) {
-        $name = trim($request->customer_name);
-        $query->where('customer_name', 'like', "%{$name}%");
-    }
-
-    // ✅ Mobile (LIKE or exact - choose one)
-    if ($request->filled('customer_mobile')) {
-        $mobile = trim($request->customer_mobile);
-        $query->where('mobile', 'like', "%{$mobile}%");
-        // or: $query->where('mobile', $mobile);
-    }
-
-    // ✅ Date range on rent_date (From / To)
-    if ($request->filled('from_date') && $request->filled('to_date')) {
-        $from = Carbon::parse($request->from_date)->startOfDay();
-        $to   = Carbon::parse($request->to_date)->endOfDay();
-        $query->whereBetween('rent_date', [$from, $to]);
-    } elseif ($request->filled('from_date')) {
-        $from = Carbon::parse($request->from_date)->startOfDay();
-        $query->where('rent_date', '>=', $from);
-    } elseif ($request->filled('to_date')) {
-        $to = Carbon::parse($request->to_date)->endOfDay();
-        $query->where('rent_date', '<=', $to);
-    }
-
-    $rows = $query->orderByDesc('daily_order_id')
+    $rows = $this->filteredDailyOrdersQuery($request)
                   ->paginate(20)
                   ->appends($request->query()); // ✅ keep filters in pagination links
 
-    $dailyrate = RentPrice::select('amount')->where(['rent_type' => 'Daily'])->first();
-    $godowns   = GodownMaster::where(['iStatus' => 1, 'isDelete' => 0])->orderBy('Name')->get();
-    $rate      = (float) ($dailyrate->amount ?? 0);
+    $godowns = GodownMaster::where(['iStatus' => 1, 'isDelete' => 0])->orderBy('Name')->get();
+    $rate    = $this->dailyRate();
 
-    $totals = [
-        'days' => 0, 'base' => 0.0, 'extra' => 0.0, 'stored' => 0.0,
-        'grand' => 0.0, 'paid' => 0.0, 'due' => 0.0,
-    ];
-
-    $rows->getCollection()->transform(function ($r) use (&$totals, $rate) {
-        $placed   = $r->rent_date;
-        $received = $r->received_at;
-
-        $start = $placed ? Carbon::parse($placed)->startOfDay() : null;
-        $end   = $received ? Carbon::parse($received)->startOfDay() : now()->startOfDay();
-
-        $days  = $start ? max(0, $start->diffInDays($end)) : 0;
-
-        $base  = $days >= 1 ? $rate : 0;
-        $extra = max(0, $days - 1) * $rate;
-
-        $stored = (float) ($r->total_amount ?? 0);
-        $grand  = round($stored + $extra, 2);
-
-        $paid = (float) DailyOrderLedger::where('daily_order_id', $r->daily_order_id)
-            ->where('iStatus', 1)->where('isDelete', 0)
-            ->sum('credit_bl');
-
-        $due = max(0, $grand - $paid);
-
-        $r->calc_days   = $days;
-        $r->calc_base   = round($base, 2);
-        $r->calc_extra  = round($extra, 2);
-        $r->calc_stored = round($stored, 2);
-        $r->calc_grand  = round($grand, 2);
-        $r->calc_paid   = round($paid, 2);
-        $r->calc_due    = round($due, 2);
-
-        $totals['days']   += $days;
-        $totals['base']   += $r->calc_base;
-        $totals['extra']  += $r->calc_extra;
-        $totals['stored'] += $r->calc_stored;
-        $totals['grand']  += $r->calc_grand;
-        $totals['paid']   += $r->calc_paid;
-        $totals['due']    += $r->calc_due;
-
-        return $r;
-    });
+    [$collection, $totals] = $this->withCalculatedTotals($rows->getCollection(), $rate);
+    $rows->setCollection($collection);
 
     return view('admin.daily_orders.index', compact('rows', 'rate', 'totals', 'godowns'));
 }
+
+    /**
+     * Download the currently filtered Daily Orders listing as a PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $rate = $this->dailyRate();
+        $rows = $this->filteredDailyOrdersQuery($request)->get();
+        [$rows, $totals] = $this->withCalculatedTotals($rows, $rate);
+
+        $pdf = Pdf::loadView('admin.daily_orders.pdf', [
+            'rows'      => $rows,
+            'totals'    => $totals,
+            'filters'   => $request->only(['customer_name', 'customer_mobile', 'from_date', 'to_date']),
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('daily-orders-' . now()->format('Ymd_His') . '.pdf');
+    }
+
+    /**
+     * Download the currently filtered Daily Orders listing as an Excel file.
+     */
+    public function exportExcel(Request $request)
+    {
+        $rate = $this->dailyRate();
+        $rows = $this->filteredDailyOrdersQuery($request)->get();
+        [$rows, $totals] = $this->withCalculatedTotals($rows, $rate);
+
+        return Excel::download(
+            new DailyOrdersExport($rows, $totals),
+            'daily-orders-' . now()->format('Ymd_His') . '.xlsx'
+        );
+    }
 
     /*public function index(Request $request)
     {
