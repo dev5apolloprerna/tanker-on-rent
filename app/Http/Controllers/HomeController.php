@@ -19,6 +19,7 @@ use App\Models\OrderMaster;
 use App\Models\OrderPayment;
 use App\Models\DailyExpence;
 use App\Models\EmpAttendance;
+use App\Services\MonthlyOrderTotalsService;
 
 use Carbon\Carbon;
 
@@ -100,76 +101,30 @@ class HomeController extends Controller
             ->where('status', 'A')
             ->count();
             
-            $orders = OrderMaster::notDeleted()
-                    ->with(['customer', 'tanker', 'rentPrice'])
-                    ->withSum('paymentMaster', 'paid_amount')
-                    ->where(function ($sub) {
-                        $sub->where('isReceive', 1)
-                            ->orWhereHas('paymentMaster', function ($pm) {
-                                $pm->where('unpaid_amount', '>', 0);
-                            });
-                    })
-                    ->whereDoesntHave('paymentMaster', function ($pm) {
-                        $pm->where('unpaid_amount', '=', 0)
-                            ->whereHas('order', function ($order) {
-                                $order->where('isReceive', 0);
-                            });
-                    })
-                    ->orderByDesc('order_id')
-                    ->get();
+                      // Use the same default data set as the Monthly Orders listing and
+            // the same calculation as its PDF/Excel exports.
+            $monthlyOrders = OrderMaster::notDeleted()
+                ->with('rentPrice')
+                ->whereHas('rentPrice', function ($query) {
+                    $query->whereRaw('LOWER(rent_type) = ?', ['monthly']);
+                })
+                ->where(function ($query) {
+                    $query->where('isReceive', 1)
+                        ->orWhereHas('paymentMaster', function ($payment) {
+                            $payment->where('unpaid_amount', '>', 0);
+                        });
+                })
+                ->whereDoesntHave('paymentMaster', function ($payment) {
+                    $payment->where('unpaid_amount', 0)
+                        ->whereHas('order', function ($order) {
+                            $order->where('isReceive', 0);
+                        });
+                })
+                ->get();
 
-                $customerIds = $orders->pluck('customer_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->unique()
-                    ->values();
-
-                $overallPaymentsByCustomer = [];
-
-                if ($customerIds->isNotEmpty()) {
-                    $overallPaymentsByCustomer = OrderPayment::whereIn('customer_id', $customerIds)
-                        ->where('order_id', 0)
-                        ->select('customer_id', DB::raw('SUM(paid_amount) as total_paid'))
-                        ->groupBy('customer_id')
-                        ->pluck('total_paid', 'customer_id')
-                        ->map(fn ($v) => (float) $v)
-                        ->toArray();
-                }
-
-                $totalPaid = 0;
-                $totalUnpaid = 0;
-
-                $customerPaymentSummary = [];
-
-                foreach ($orders as $o) {
-                    $snap = $o->dueSnapshot();
-
-                    $totalPaid += (float) ($snap['paid_sum'] ?? 0);
-                    $totalUnpaid += (float) ($snap['unpaid'] ?? 0);
-
-                    $customerId = (int) $o->customer_id;
-
-                    if (!isset($customerPaymentSummary[$customerId])) {
-                        $customerPaymentSummary[$customerId] = [
-                            'paid' => 0,
-                            'unpaid' => 0,
-                        ];
-                    }
-
-                    $customerPaymentSummary[$customerId]['paid'] += (float) ($snap['paid_sum'] ?? 0);
-                    $customerPaymentSummary[$customerId]['unpaid'] += (float) ($snap['unpaid'] ?? 0);
-                }
-
-                foreach ($customerPaymentSummary as $customerId => &$summary) {
-                    $overallPaid = (float) ($overallPaymentsByCustomer[$customerId] ?? 0);
-
-                    $summary['paid'] += $overallPaid;
-                    $summary['unpaid'] = max(0, (float) $summary['unpaid'] - $overallPaid);
-
-                    $totalPaid += $overallPaid;
-                    $totalUnpaid = max(0, $totalUnpaid - $overallPaid);
-                }
-
-                unset($summary);
+            $monthlyTotals = app(MonthlyOrderTotalsService::class)->calculate($monthlyOrders);
+            $totalPaid = $monthlyTotals['paid'];
+            $totalUnpaid = $monthlyTotals['unpaid'];
 
 
                 return view('home',compact('customerCount','tankerCount','intankerCount','outtankerCount','employeeTotal','godownTotal','vendorCount','orderCount','todayTotal', 'monthTotal', 'todayCount', 'monthCount', 'monthDailySeries','presentCount','absentCount','today', 'totalPaid', 'totalUnpaid'));
