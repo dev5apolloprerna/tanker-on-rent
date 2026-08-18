@@ -21,7 +21,7 @@
                         <div class="col-md-10">
                             <form method="GET" action="{{ route('orders.index') }}" class="d-flex">
                                 <input type="text" class="form-control me-2" name="search" value="{{ request('search') }}"
-                                       placeholder="Tanker No / Rent Type / Ref Name / Ref Mobile / Location">
+                                       placeholder="Tanker No / Company / Rent Type / Ref Name / Ref Mobile / Location">
 
                                 <select class="form-select me-2" name="rent_type">
                                     <option value="">-- Rent Type --</option>
@@ -54,8 +54,12 @@
                                 <i class="far fa-trash-alt"></i> Bulk Delete
                             </button>
 
-                            <a href="{{ route('orders.monthly-pdf', request()->query()) }}" class="btn btn-sm btn-danger ms-1">
+<!--                             <a href="{{ route('orders.monthly-pdf', request()->query()) }}" class="btn btn-sm btn-danger ms-1">
                                 <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+ -->
+                            <a href="{{ route('orders.monthly-excel', request()->query()) }}" class="btn btn-sm btn-success ms-1">
+                                <i class="fas fa-file-excel"></i> Excel
                             </a>
                         </div>
 
@@ -82,6 +86,7 @@
                                     <th>Rent Start</th>
                                     <th>Rent Type</th>
                                     <th>Customer (Total)</th>
+                                    <th>Company Name</th>
                                     <th>Tanker No</th>
                                     <th>Tanker Name</th>
                                     <th>Tanker Location</th>
@@ -145,7 +150,7 @@
                                                 </span>
                                             </div>
                                         </td>
-
+                                        <td>{{ $o->company_name ?: '-' }}</td>
                                         <td>{{ $o->tanker->tanker_code ?? '-' }}</td>
                                         <td>{{ $o->tanker->tanker_name ?? '-' }}</td>
                                         <td>{{ $o->tanker_location }}</td>
@@ -211,11 +216,17 @@
                                             </a>
 
                                             @if(($o->rentPrice->rent_type ?? '') === 'Monthly')
-                                                <a href="{{ route('orders.monthly-pdf', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
+                                                <!-- <a href="{{ route('orders.monthly-pdf', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
                                                    class="btn btn-sm btn-danger"
                                                    title="Customer PDF"
                                                    target="_blank">
                                                     <i class="fas fa-file-pdf"></i>
+                                                </a> -->
+
+                                                <a href="{{ route('orders.monthly-excel', array_merge(request()->query(), ['customer_id' => $o->customer_id])) }}"
+                                                   class="btn btn-sm btn-success"
+                                                   title="Customer Excel">
+                                                    <i class="fas fa-file-excel"></i>
                                                 </a>
                                             @endif
 
@@ -247,7 +258,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="14" class="text-center">No orders found.</td>
+                                        <td colspan="15" class="text-center">No orders found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

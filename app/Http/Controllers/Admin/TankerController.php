@@ -14,15 +14,20 @@ class TankerController extends Controller
     {
         $query = Tanker::with('godown')->where('isDelete', 0);
 
-        if ($request->tanker_name) {
-            $query->where('tanker_name', 'LIKE', '%' . $request->tanker_name . '%');
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery->where('tanker_code', 'LIKE', '%' . $search . '%')
+                    ->orWhere('tanker_name', 'LIKE', '%' . $search . '%');
+            });
         }
 
-        if ($request->tanker_code) {
-            $query->where('tanker_code', 'LIKE', '%' . $request->tanker_code . '%');
+        if ($request->filled('status') && in_array($request->input('status'), ['0', '1'], true)) {
+            $query->where('status', $request->input('status'));
         }
 
-        $tankers = $query->orderBy('tanker_id', 'DESC')->paginate(10);
+        $tankers = $query->orderBy('tanker_id', 'DESC')->paginate(10)->withQueryString();
         $godown=GodownMaster::where('isDelete',0)->where('iStatus',1)->get();
 
         return view('admin.tanker.index', compact('tankers','godown'));

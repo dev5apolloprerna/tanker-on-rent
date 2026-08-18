@@ -80,6 +80,16 @@
                                         @endif
                                     </div>
 
+                                    {{-- Company Name --}}
+                                    <div class="col-md-4 mb-4">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" class="form-control" name="company_name"
+                                               value="{{ old('company_name', $order->company_name ?? '') }}" placeholder="Company Name">
+                                        @error('company_name')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+
                                     {{-- User --}}
                                     <div class="col-md-4 mb-4">
                                         <label class="form-label">User Name <span style="color:red;">*</span></label>

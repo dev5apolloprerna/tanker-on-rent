@@ -22,7 +22,18 @@ class DailyOrder extends Model
         'isDelete'  => 'integer',
         'total_amount'    => 'integer',
     ];
+ protected static function booted(): void
+    {
+        static::addGlobalScope('not_deleted', function ($query) {
+            $query->where($query->getModel()->qualifyColumn('isDelete'), 0);
+        });
+    }
 
+    public function scopeNotDeleted($query)
+    {
+        return $query->where($this->qualifyColumn('isDelete'), 0);
+    }
+    
     public function ledgers() {
         return $this->hasMany(DailyOrderLedger::class, 'daily_order_id', 'daily_order_id');
     }

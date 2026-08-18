@@ -159,6 +159,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/orders/{id}/orders-summary', [OrderMasterController::class, 'customerOrdersSummary'])
         ->name('orders.orders-summary');
     Route::get('orders-monthly-pdf', [OrderMasterController::class, 'monthlyPdf'])->name('orders.monthly-pdf');
+    Route::get('orders-monthly-excel', [OrderMasterController::class, 'monthlyExcel'])->name('orders.monthly-excel');
 
     });
 
@@ -284,6 +285,10 @@ Route::prefix('daily-orders')->group(function () {
     Route::get('daily-orders/edit/{id}', [DailyOrderController::class, 'edit'])->name('daily-orders.edit');
     Route::put('daily-orders/{daily_order}', [DailyOrderController::class, 'update'])
         ->name('daily-orders.update');
+
+    // Export current (filtered) listing
+    Route::get('daily-orders/export-pdf', [DailyOrderController::class, 'exportPdf'])->name('daily-orders.export-pdf');
+    Route::get('daily-orders/export-excel', [DailyOrderController::class, 'exportExcel'])->name('daily-orders.export-excel');
 
     Route::delete('/{id}', [DailyOrderController::class, 'destroy'])->name('daily-orders.destroy');
 

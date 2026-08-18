@@ -58,17 +58,30 @@
                 </div>
 
                 <div class="col-md-8">
-                    <form id="bulkDeleteForm" method="POST" action="{{ route('tanker.bulkDelete') }}">
-                        @csrf
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Tanker List</h5>
-                                <!--<div class="d-flex">
-                                    <input type="text" name="tanker_name" class="form-control me-2" placeholder="Tanker Name" value="{{ request('tanker_name') }}">
-                                    <input type="text" name="tanker_code" class="form-control me-2" placeholder="Tanker Code" value="{{ request('tanker_code') }}">
-                                    <button type="submit" class="btn btn-primary">Search</button>
-                                </div>-->
-                            </div>
+                   <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-3">Tanker List</h5>
+                            <form method="GET" action="{{ route('tanker.index') }}" class="row g-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label for="tanker_search" class="form-label">Tanker No or Name</label>
+                                    <input type="text" id="tanker_search" name="search" class="form-control" placeholder="Search by tanker no or name" value="{{ request('search') }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="tanker_status" class="form-label">Tanker Status</label>
+                                    <select id="tanker_status" name="status" class="form-select">
+                                        <option value="">All Tankers</option>
+                                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inside</option>
+                                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Outside</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                                    <a href="{{ route('tanker.index') }}" class="btn btn-light">Clear</a>
+                                </div>
+                            </form>
+                        </div>
+                        <form id="bulkDeleteForm" method="POST" action="{{ route('tanker.bulkDelete') }}">
+                            @csrf
                             <div class="card-body table-responsive">
                                 <button type="submit" class="btn btn-danger btn-sm mb-2" onclick="return confirm('Delete selected?')"> <i class="far fa-trash-alt"></i> Bulk Delete</button>
                                 <table class="table table-bordered">
@@ -76,8 +89,8 @@
                                         <tr>
                                             <th><input type="checkbox" id="selectAll"></th>
                                             <th>Godown</th>
-                                            <th>Name</th>
-                                            <th>Code</th>
+                                            <th>Tanker Name</th>
+                                            <th>Tanker No</th>
                                             <th>Status</th>
                                             <th>Created On</th>
                                             <th>Action</th>
@@ -120,8 +133,8 @@
                                     {!! $tankers->links() !!}
                                 </div>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

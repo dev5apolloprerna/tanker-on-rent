@@ -30,6 +30,14 @@
                     </form>
                 </div>
                 <div class="col-md-2 text-end">
+                    <!-- <a href="{{ route('daily-orders.export-pdf', request()->query()) }}"
+                       class="btn btn-sm btn-outline-danger" target="_blank" title="Download PDF">
+                        <i class="far fa-file-pdf"></i> PDF
+                    </a> -->
+                    <a href="{{ route('daily-orders.export-excel', request()->query()) }}"
+                       class="btn btn-sm btn-outline-success" title="Download Excel">
+                        <i class="far fa-file-excel"></i> Excel
+                    </a>
                     <a href="{{ route('daily-orders.create') }}" class="btn btn-sm btn-primary">
                         <i class="far fa-plus"></i> Add New
                     </a>

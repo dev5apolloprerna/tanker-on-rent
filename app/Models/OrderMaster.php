@@ -14,6 +14,7 @@ class OrderMaster extends Model
 
     protected $fillable = [
         'customer_id',
+        'company_name',
         'user_mobile',
         'user_name',
         'tanker_id',
@@ -37,9 +38,16 @@ class OrderMaster extends Model
         'received_at'     => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('not_deleted', function ($query) {
+            $query->where($query->getModel()->qualifyColumn('isDelete'), 0);
+        });
+    }
+
 
     // Scope hide soft-deleted rows
-    public function scopeNotDeleted($q) { return $q->where('isDelete', 0); }
+    public function scopeNotDeleted($q) { return $q->where($this->qualifyColumn('isDelete'), 0); }
 
     // Relations (optional if you want eager loading in listing)
     public function customer() { return $this->belongsTo(Customer::class, 'customer_id', 'customer_id'); }
