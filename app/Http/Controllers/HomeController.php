@@ -19,6 +19,9 @@ use App\Models\OrderMaster;
 use App\Models\OrderPayment;
 use App\Models\DailyExpence;
 use App\Models\EmpAttendance;
+use App\Models\DailyOrder;
+use App\Models\RentPrice;
+use App\Services\DailyOrderTotalsService;
 use App\Services\MonthlyOrderTotalsService;
 
 use Carbon\Carbon;
@@ -108,23 +111,19 @@ class HomeController extends Controller
                 ->whereHas('rentPrice', function ($query) {
                     $query->whereRaw('LOWER(rent_type) = ?', ['monthly']);
                 })
-                ->where(function ($query) {
-                    $query->where('isReceive', 1)
-                        ->orWhereHas('paymentMaster', function ($payment) {
-                            $payment->where('unpaid_amount', '>', 0);
-                        });
-                })
-                ->whereDoesntHave('paymentMaster', function ($payment) {
-                    $payment->where('unpaid_amount', 0)
-                        ->whereHas('order', function ($order) {
-                            $order->where('isReceive', 0);
-                        });
-                })
+               
                 ->get();
 
             $monthlyTotals = app(MonthlyOrderTotalsService::class)->calculate($monthlyOrders);
-            $totalPaid = $monthlyTotals['paid'];
-            $totalUnpaid = $monthlyTotals['unpaid'];
+ // Daily orders use their listing's exact amount and payment rules.
+            // The model scope excludes deleted orders, while the service excludes
+            // deleted/inactive ledger entries.
+            $dailyOrders = DailyOrder::notDeleted()->get();
+            $dailyRate = (float) RentPrice::whereRaw('LOWER(rent_type) = ?', ['daily'])->value('amount');
+            $dailyTotals = app(DailyOrderTotalsService::class)->calculate($dailyOrders, $dailyRate);
+
+            $totalPaid = $monthlyTotals['paid'] + $dailyTotals['paid'];
+            $totalUnpaid = $monthlyTotals['unpaid'] + $dailyTotals['due'];
 
 
                 return view('home',compact('customerCount','tankerCount','intankerCount','outtankerCount','employeeTotal','godownTotal','vendorCount','orderCount','todayTotal', 'monthTotal', 'todayCount', 'monthCount', 'monthDailySeries','presentCount','absentCount','today', 'totalPaid', 'totalUnpaid'));
