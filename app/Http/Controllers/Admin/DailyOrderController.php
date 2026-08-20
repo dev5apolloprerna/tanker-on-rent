@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\RentPrice;
 use App\Models\Tanker;
 use App\Services\LedgerService;
+use App\Services\DailyOrderTotalsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB; // top of file
@@ -24,7 +25,11 @@ use App\Exports\DailyOrdersExport;
 class DailyOrderController extends Controller
 {
 
-    public function __construct(private LedgerService $ledger) {}
+    public function __construct(
+        private LedgerService $ledger,
+        private DailyOrderTotalsService $dailyOrderTotals
+    ) {}
+
 
     /**
      * Shared filtering used by the listing page and both exports,
@@ -69,50 +74,7 @@ class DailyOrderController extends Controller
      */
     private function withCalculatedTotals($collection, float $rate): array
     {
-        $totals = [
-            'days' => 0, 'base' => 0.0, 'extra' => 0.0, 'stored' => 0.0,
-            'grand' => 0.0, 'paid' => 0.0, 'due' => 0.0,
-        ];
-
-        $collection->transform(function ($r) use (&$totals, $rate) {
-            $placed   = $r->rent_date;
-            $received = $r->received_at;
-
-            $start = $placed ? Carbon::parse($placed)->startOfDay() : null;
-            $end   = $received ? Carbon::parse($received)->startOfDay() : now()->startOfDay();
-
-            $days  = $start ? max(0, $start->diffInDays($end)) : 0;
-
-            $base  = $days >= 1 ? $rate : 0;
-            $extra = max(0, $days - 1) * $rate;
-
-            $stored = (float) ($r->total_amount ?? 0);
-            $grand  = round($stored + $extra, 2);
-
-            $paid = (float) DailyOrderLedger::where('daily_order_id', $r->daily_order_id)
-                ->where('iStatus', 1)->where('isDelete', 0)
-                ->sum('credit_bl');
-
-            $due = max(0, $grand - $paid);
-
-            $r->calc_days   = $days;
-            $r->calc_base   = round($base, 2);
-            $r->calc_extra  = round($extra, 2);
-            $r->calc_stored = round($stored, 2);
-            $r->calc_grand  = round($grand, 2);
-            $r->calc_paid   = round($paid, 2);
-            $r->calc_due    = round($due, 2);
-
-            $totals['days']   += $days;
-            $totals['base']   += $r->calc_base;
-            $totals['extra']  += $r->calc_extra;
-            $totals['stored'] += $r->calc_stored;
-            $totals['grand']  += $r->calc_grand;
-            $totals['paid']   += $r->calc_paid;
-            $totals['due']    += $r->calc_due;
-
-            return $r;
-        });
+               $totals = $this->dailyOrderTotals->calculate($collection, $rate, true);
 
         return [$collection, $totals];
     }
